@@ -1,4 +1,4 @@
-const CACHE = 'ira-v3';
+const CACHE = 'ira-v4';
 const CORE = [
   '/',
   '/index.html',
@@ -31,7 +31,7 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
 
   // Always fetch live data fresh from network
-  if (url.includes('/dashboard-data.js') || url.includes('/refresh-data')) {
+  if (url.includes('/dashboard-data.js') || url.includes('/refresh-data') || url.includes('/api/')) {
     e.respondWith(
       fetch(e.request).catch(() => caches.match('/dashboard-data.js'))
     );
