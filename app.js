@@ -25,13 +25,16 @@ const APP = {
   init() {
     this.ensureDefaultData();
     this.bindGlobalEvents();
-    const saved = this.storage.get('session');
-    if (saved && saved.userId) {
-      const users = this.storage.get('users', []);
-      const user = users.find(u => u.id === saved.userId);
-      if (user) { this.loginUser(user); return; }
-    }
-    this.showLogin();
+    // Wait for cloud config (PINs) before showing login
+    this.loadConfig(function() {
+      const saved = APP.storage.get('session');
+      if (saved && saved.userId) {
+        const users = APP.storage.get('users', []);
+        const user = users.find(function(u) { return u.id === saved.userId; });
+        if (user) { APP.loginUser(user); return; }
+      }
+      APP.showLogin();
+    });
   },
 
   ensureDefaultData() {
@@ -44,11 +47,9 @@ const APP = {
     if (!this.storage.get('progress')) this.storage.set('progress', {});
     if (!this.storage.get('xp_log')) this.storage.set('xp_log', []);
     if (!this.storage.get('video_urls')) this.storage.set('video_urls', {});
-    // Load shared config from cloud (video URLs + PIN overrides)
-    this.loadConfig();
   },
 
-  loadConfig() {
+  loadConfig(callback) {
     fetch('/api/config')
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(cfg) {
@@ -90,7 +91,8 @@ const APP = {
           if (pinChanged) APP.storage.set('users', users);
         }
       })
-      .catch(function() {}); // offline — silent
+      .catch(function() {})
+      .finally(function() { if (callback) callback(); }); // always proceed even if offline
   },
 
   syncConfig(patch) {
