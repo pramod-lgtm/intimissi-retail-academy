@@ -102,21 +102,36 @@ module.exports = async function handler(req, res) {
     if (patch.video_urls) Object.assign(currentConfig.video_urls, patch.video_urls);
     if (patch.pin_overrides) Object.assign(currentConfig.pin_overrides, patch.pin_overrides);
 
-    // Commit
-    const newContent = Buffer.from(JSON.stringify(currentConfig, null, 2)).toString('base64');
-    const commitBody = { message: 'config: sync update', content: newContent };
-    if (sha) commitBody.sha = sha;
-
-    try {
-      const r = await ghRequest('PUT', '/repos/' + REPO + '/contents/' + FILE, commitBody);
-      if (r.status === 200 || r.status === 201) {
-        res.status(200).json({ ok: true });
-      } else {
-        res.status(500).json({ error: 'GitHub commit failed', status: r.status, detail: r.body });
+    // Commit with retry on 409 conflict (SHA changed between read and write)
+    let committed = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        // Re-fetch fresh SHA and re-merge
+        try {
+          const fresh = await ghRequest('GET', '/repos/' + REPO + '/contents/' + FILE);
+          if (fresh.status === 200) {
+            sha = fresh.body.sha;
+            const freshCfg = JSON.parse(Buffer.from(fresh.body.content, 'base64').toString('utf8'));
+            if (!freshCfg.video_urls) freshCfg.video_urls = {};
+            if (!freshCfg.pin_overrides) freshCfg.pin_overrides = {};
+            if (patch.video_urls) Object.assign(freshCfg.video_urls, patch.video_urls);
+            if (patch.pin_overrides) Object.assign(freshCfg.pin_overrides, patch.pin_overrides);
+            currentConfig = freshCfg;
+          }
+        } catch(e) {}
       }
-    } catch(e) {
-      res.status(500).json({ error: e.message });
+      const newContent = Buffer.from(JSON.stringify(currentConfig, null, 2)).toString('base64');
+      const commitBody = { message: 'config: sync update', content: newContent };
+      if (sha) commitBody.sha = sha;
+      try {
+        const r = await ghRequest('PUT', '/repos/' + REPO + '/contents/' + FILE, commitBody);
+        if (r.status === 200 || r.status === 201) { committed = true; break; }
+        if (r.status !== 409) { res.status(500).json({ error: 'GitHub commit failed', status: r.status }); return; }
+        // 409 = SHA conflict, retry
+      } catch(e) { res.status(500).json({ error: e.message }); return; }
     }
+    if (committed) { res.status(200).json({ ok: true }); }
+    else { res.status(500).json({ error: 'Failed after 3 attempts (SHA conflicts)' }); }
     return;
   }
 
