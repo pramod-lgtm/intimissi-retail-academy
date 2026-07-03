@@ -1708,7 +1708,14 @@ const APP = {
     if (!newPin || newPin.length !== 4 || isNaN(newPin)) { this.toast('Invalid PIN', 'error'); return; }
     const users = this.storage.get('users', []);
     const u = users.find(x => x.id === userId);
-    if (u) { u.pin = newPin; this.storage.set('users', users); this.toast('PIN updated!', 'success'); }
+    if (u) {
+      u.pin = newPin;
+      this.storage.set('users', users);
+      const patch = { pin_overrides: {} };
+      patch.pin_overrides[userId] = newPin;
+      this.syncConfig(patch);
+      this.toast('PIN updated and synced!', 'success');
+    }
   },
 
   // ── REPORTS ──────────────────────────────────────────────
