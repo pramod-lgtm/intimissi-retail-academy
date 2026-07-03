@@ -44,6 +44,42 @@ const APP = {
     if (!this.storage.get('progress')) this.storage.set('progress', {});
     if (!this.storage.get('xp_log')) this.storage.set('xp_log', []);
     if (!this.storage.get('video_urls')) this.storage.set('video_urls', {});
+    // Load shared config from cloud (video URLs + PIN overrides)
+    this.loadConfig();
+  },
+
+  loadConfig() {
+    fetch('/api/config')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(cfg) {
+        if (!cfg) return;
+        // Merge cloud video_urls into localStorage (cloud wins)
+        if (cfg.video_urls && Object.keys(cfg.video_urls).length) {
+          var local = APP.storage.get('video_urls', {});
+          Object.keys(cfg.video_urls).forEach(function(k) {
+            if (cfg.video_urls[k]) local[k] = cfg.video_urls[k];
+          });
+          APP.storage.set('video_urls', local);
+        }
+        // Apply PIN overrides (cloud wins over default 1234)
+        if (cfg.pin_overrides && Object.keys(cfg.pin_overrides).length) {
+          var users = APP.storage.get('users', []);
+          var changed = false;
+          users.forEach(function(u) {
+            if (cfg.pin_overrides[u.id]) { u.pin = cfg.pin_overrides[u.id]; changed = true; }
+          });
+          if (changed) APP.storage.set('users', users);
+        }
+      })
+      .catch(function() {}); // offline — silent
+  },
+
+  syncConfig(patch) {
+    fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    }).catch(function() {});
   },
 
   // Sync real salespersons from SALES_DATA into the user store
@@ -645,6 +681,10 @@ const APP = {
       const localFile = brand?.videoFile || cat?.videoFile || '';
       container.innerHTML = this.buildVideoEmbed(url, localFile, moduleId);
     }
+    // Sync to cloud so all devices get the URL
+    const patch = { video_urls: {} };
+    patch.video_urls[moduleId] = url;
+    this.syncConfig(patch);
     this.toast('Video URL saved!', 'success');
   },
 
@@ -1748,7 +1788,15 @@ const APP = {
     if (!pin || pin.length !== 4 || isNaN(pin)) { this.toast('PIN must be exactly 4 digits', 'error'); return; }
     const users = this.storage.get('users', []);
     const u = users.find(x => x.id === this.state.user.id);
-    if (u) { u.pin = pin; this.storage.set('users', users); this.toast('PIN updated successfully!', 'success'); }
+    if (u) {
+      u.pin = pin;
+      this.storage.set('users', users);
+      // Sync to cloud so the new PIN works on all devices
+      const patch = { pin_overrides: {} };
+      patch.pin_overrides[u.id] = pin;
+      this.syncConfig(patch);
+      this.toast('PIN updated successfully!', 'success');
+    }
   },
 
   // ── XP & GAMIFICATION ───────────────────────────────────
