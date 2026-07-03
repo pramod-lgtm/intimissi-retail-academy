@@ -1,0 +1,16 @@
+{
+  "name": "Intimissi Retail Academy",
+  "short_name": "IRA",
+  "description": "AI-powered learning, sales performance & gamification platform for Intimissi retail teams",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0d0d",
+  "theme_color": "#c9a84c",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "categories": ["education", "business"],
+  "lang": "en"
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IRA">
+  <meta name="theme-color" content="#c9a84c">
+  <meta name="description" content="Intimissi Retail Academy — AI-powered learning & sales performance">
+  <title>Intimissi Retail Academy</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══════════════════════════════════════════ -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size:2.5rem;margin-bottom:0.5rem">👑</div>
+      <h1>INTIMISSI</h1>
+      <p>RETAIL ACADEMY</p>
+    </div>
+
+    <div id="login-form-area">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem">
+      <div class="text-xs muted">Demo PINs: Admin=0000 · Manager=4444 · Stylist=6666</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ═════════════════════════════════════════════ -->
+<div id="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">INTIMISSI</div>
+      <div class="sub">RETAIL ACADEMY</div>
+    </div>
+
+    <div class="user-panel">
+      <div class="user-avatar" id="sidebar-avatar">—</div>
+      <div class="user-info">
+        <div class="name" id="sidebar-user-name">—</div>
+        <div class="role" id="sidebar-user-role">—</div>
+        <div class="store" id="sidebar-user-store">—</div>
+      </div>
+    </div>
+
+    <div id="sidebar-nav"></div>
+
+    <div class="sidebar-footer">
+      <div class="xp-bar-wrap">
+        <div class="xp-label">
+          <span id="sidebar-xp-label">Novice</span>
+          <span id="sidebar-xp-val">0 XP</span>
+        </div>
+        <div class="xp-bar">
+          <div class="xp-fill" id="sidebar-xp-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="top-bar">
+      <h2 id="top-bar-title">Dashboard</h2>
+      <div class="top-bar-right">
+        <button class="btn btn-ghost btn-sm" onclick="APP.navigate('ai-coach')">🤖 AI Coach</button>
+        <button class="btn btn-ghost btn-sm" onclick="APP.navigate('leaderboard')">🏆 Leaderboard</button>
+        <button class="btn btn-outline btn-sm" onclick="APP.logout()">Logout</button>
+      </div>
+    </header>
+
+    <div class="page-content" id="page-content">
+      <!-- Rendered by JS -->
+    </div>
+  </main>
+
+</div><!-- /app-shell -->
+
+<!-- ══ TOAST CONTAINER ═══════════════════════════════════════ -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ══ SCRIPTS ═══════════════════════════════════════════════ -->
+<script src="data.js"></script>
+<script src="sales_data.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+        console.log('[SW] Registered, scope:', reg.scope);
+      }).catch(function(err) {
+        console.warn('[SW] Registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

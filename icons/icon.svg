@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0d0d0d"/>
+  <rect x="20" y="20" width="472" height="472" rx="80" fill="none" stroke="#c9a84c" stroke-width="8"/>
+  <!-- Crown shape -->
+  <path d="M256 120 L180 220 L100 160 L140 310 H372 L412 160 L332 220 Z" fill="#c9a84c"/>
+  <circle cx="256" cy="115" r="20" fill="#c9a84c"/>
+  <circle cx="100" cy="155" r="16" fill="#c9a84c"/>
+  <circle cx="412" cy="155" r="16" fill="#c9a84c"/>
+  <rect x="130" y="320" width="252" height="24" rx="12" fill="#c9a84c"/>
+  <!-- I R A text -->
+  <text x="256" y="420" font-family="Georgia,serif" font-size="52" font-weight="bold" fill="#fafafa" text-anchor="middle" letter-spacing="8">IRA</text>
+  <text x="256" y="460" font-family="Arial,sans-serif" font-size="22" fill="#c9a84c" text-anchor="middle" letter-spacing="3">ACADEMY</text>
+</svg>
