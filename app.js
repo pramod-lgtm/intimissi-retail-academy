@@ -56,19 +56,38 @@ const APP = {
         // Merge cloud video_urls into localStorage (cloud wins)
         if (cfg.video_urls && Object.keys(cfg.video_urls).length) {
           var local = APP.storage.get('video_urls', {});
+          var changed = false;
           Object.keys(cfg.video_urls).forEach(function(k) {
-            if (cfg.video_urls[k]) local[k] = cfg.video_urls[k];
+            if (cfg.video_urls[k] && local[k] !== cfg.video_urls[k]) {
+              local[k] = cfg.video_urls[k];
+              changed = true;
+            }
           });
-          APP.storage.set('video_urls', local);
+          if (changed) {
+            APP.storage.set('video_urls', local);
+            // Re-render video containers that are currently on screen
+            Object.keys(cfg.video_urls).forEach(function(moduleId) {
+              var container = document.getElementById('vid-container-' + moduleId);
+              var input = document.getElementById('vid-url-' + moduleId);
+              if (container) {
+                var url = cfg.video_urls[moduleId];
+                if (input) input.value = url || '';
+                var brand = IRA_DATA.brands.find(function(b) { return b.id === moduleId; });
+                var cat = IRA_DATA.categories.find(function(c) { return c.id === moduleId; });
+                var localFile = (brand && brand.videoFile) || (cat && cat.videoFile) || '';
+                container.innerHTML = APP.buildVideoEmbed(url, localFile, moduleId);
+              }
+            });
+          }
         }
         // Apply PIN overrides (cloud wins over default 1234)
         if (cfg.pin_overrides && Object.keys(cfg.pin_overrides).length) {
           var users = APP.storage.get('users', []);
-          var changed = false;
+          var pinChanged = false;
           users.forEach(function(u) {
-            if (cfg.pin_overrides[u.id]) { u.pin = cfg.pin_overrides[u.id]; changed = true; }
+            if (cfg.pin_overrides[u.id]) { u.pin = cfg.pin_overrides[u.id]; pinChanged = true; }
           });
-          if (changed) APP.storage.set('users', users);
+          if (pinChanged) APP.storage.set('users', users);
         }
       })
       .catch(function() {}); // offline — silent
