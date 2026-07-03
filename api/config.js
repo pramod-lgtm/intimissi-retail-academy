@@ -66,17 +66,10 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST') {
     if (!TOKEN) { res.status(500).json({ error: 'GITHUB_TOKEN not set' }); return; }
 
-    let patch;
-    try {
-      const chunks = [];
-      await new Promise(function(resolve, reject) {
-        req.on('data', function(c) { chunks.push(c); });
-        req.on('end', resolve);
-        req.on('error', reject);
-      });
-      patch = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    } catch(e) {
-      res.status(400).json({ error: 'Invalid JSON' }); return;
+    // Vercel auto-parses JSON body into req.body
+    const patch = req.body;
+    if (!patch || typeof patch !== 'object') {
+      res.status(400).json({ error: 'Invalid body' }); return;
     }
 
     // Read current file (need SHA for update)
@@ -87,6 +80,8 @@ module.exports = async function handler(req, res) {
       if (r.status === 200) {
         sha = r.body.sha;
         currentConfig = JSON.parse(Buffer.from(r.body.content, 'base64').toString('utf8'));
+        if (!currentConfig.video_urls) currentConfig.video_urls = {};
+        if (!currentConfig.pin_overrides) currentConfig.pin_overrides = {};
       }
     } catch(e) {}
 
@@ -96,15 +91,15 @@ module.exports = async function handler(req, res) {
 
     // Commit
     const newContent = Buffer.from(JSON.stringify(currentConfig, null, 2)).toString('base64');
-    const body = { message: 'config: sync update', content: newContent };
-    if (sha) body.sha = sha;
+    const commitBody = { message: 'config: sync update', content: newContent };
+    if (sha) commitBody.sha = sha;
 
     try {
-      const r = await ghRequest('PUT', '/repos/' + REPO + '/contents/' + FILE, body);
+      const r = await ghRequest('PUT', '/repos/' + REPO + '/contents/' + FILE, commitBody);
       if (r.status === 200 || r.status === 201) {
         res.status(200).json({ ok: true });
       } else {
-        res.status(500).json({ error: 'GitHub commit failed', detail: r.body });
+        res.status(500).json({ error: 'GitHub commit failed', status: r.status, detail: r.body });
       }
     } catch(e) {
       res.status(500).json({ error: e.message });
