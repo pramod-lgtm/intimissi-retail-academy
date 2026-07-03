@@ -54,10 +54,11 @@ module.exports = async function handler(req, res) {
         res.setHeader('Cache-Control', 'no-store');
         res.status(200).send(content);
       } else {
-        res.status(200).json({ video_urls: {}, pin_overrides: {} });
+        // Return error details so we can debug
+        res.status(200).json({ video_urls: {}, pin_overrides: {}, _debug: { status: r.status, body: r.body, repo: REPO, hasToken: !!TOKEN } });
       }
     } catch(e) {
-      res.status(200).json({ video_urls: {}, pin_overrides: {} });
+      res.status(200).json({ video_urls: {}, pin_overrides: {}, _debug: { error: e.message, repo: REPO, hasToken: !!TOKEN } });
     }
     return;
   }
