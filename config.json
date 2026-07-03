@@ -3,5 +3,7 @@
     "c9": "https://www.youtube.com/watch?v=gupC6fwPbQ0&list=PLfMEKQT3vZC6Gr4Ka9znRwHVWwf8IFEfH&index=10",
     "amante": "https://www.youtube.com/watch?v=7J2q5br0_fQ&list=PLfMEKQT3vZC6Gr4Ka9znRwHVWwf8IFEfH&index=8"
   },
-  "pin_overrides": {}
+  "pin_overrides": {
+    "sp_shilat": "9876"
+  }
 }
