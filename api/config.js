@@ -65,12 +65,24 @@ module.exports = async function handler(req, res) {
 
   // POST — merge and commit
   if (req.method === 'POST') {
-    if (!TOKEN) { res.status(500).json({ error: 'GITHUB_TOKEN not set' }); return; }
+    if (!TOKEN) { res.status(500).json({ error: 'GITHUB_TOKEN not set', repo: REPO }); return; }
 
-    // Vercel auto-parses JSON body into req.body
-    const patch = req.body;
+    // Read body manually (Vercel raw functions don't auto-parse)
+    let patch;
+    try {
+      const buf = await new Promise(function(resolve, reject) {
+        const chunks = [];
+        req.on('data', function(c) { chunks.push(c); });
+        req.on('end', function() { resolve(Buffer.concat(chunks)); });
+        req.on('error', reject);
+      });
+      patch = JSON.parse(buf.toString('utf8'));
+    } catch(e) {
+      // Fallback: try req.body if already parsed
+      patch = req.body;
+    }
     if (!patch || typeof patch !== 'object') {
-      res.status(400).json({ error: 'Invalid body' }); return;
+      res.status(400).json({ error: 'Invalid body', bodyType: typeof req.body }); return;
     }
 
     // Read current file (need SHA for update)
