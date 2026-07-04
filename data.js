@@ -5,14 +5,81 @@
 
 const IRA_DATA = {
 
-  // ── EMPLOYEE LEVELS ────────────────────────────────────────
+  // ── EMPLOYEE LEVELS (RPG System) ──────────────────────────
   levels: [
-    { id: 1, name: 'Novice',        minXP: 0,     badge: '🌱', color: '#7cb342' },
-    { id: 2, name: 'Learner',       minXP: 500,   badge: '📚', color: '#1e88e5' },
-    { id: 3, name: 'Guide',         minXP: 1500,  badge: '🧭', color: '#8e24aa' },
-    { id: 4, name: 'Expert',        minXP: 3000,  badge: '⭐', color: '#f4511e' },
-    { id: 5, name: 'Master Stylist',minXP: 6000,  badge: '👑', color: '#c9a84c' }
+    { id: 1,  name: 'Recruit',          minXP: 0,     badge: '🌱', color: '#7cb342', title: 'Just getting started' },
+    { id: 2,  name: 'Junior Stylist',   minXP: 500,   badge: '💫', color: '#1e88e5', title: 'Learning the craft' },
+    { id: 3,  name: 'Stylist',          minXP: 1500,  badge: '✨', color: '#00897b', title: 'Building confidence' },
+    { id: 4,  name: 'Senior Stylist',   minXP: 3000,  badge: '⭐', color: '#8e24aa', title: 'Trusted professional' },
+    { id: 5,  name: 'Fit Specialist',   minXP: 6000,  badge: '🎯', color: '#f4511e', title: 'Fitting expert' },
+    { id: 6,  name: 'Bra Expert',       minXP: 10000, badge: '💎', color: '#e91e63', title: 'Product authority' },
+    { id: 7,  name: 'Master Corsetier', minXP: 15000, badge: '🏅', color: '#880e4f', title: 'Elite craftsperson' },
+    { id: 8,  name: 'Elite Stylist',    minXP: 22000, badge: '👑', color: '#c9a84c', title: 'Top performer' },
+    { id: 9,  name: 'Retail Champion',  minXP: 30000, badge: '🔥', color: '#d32f2f', title: 'Store legend' },
+    { id: 10, name: 'Legend',           minXP: 50000, badge: '🌟', color: '#f9a825', title: 'Intimissi Hall of Fame' }
   ],
+
+  // ── BADGE DEFINITIONS ─────────────────────────────────────
+  badges: [
+    // Academy Badges
+    { id:'first_quiz',   name:'First Step',        icon:'🎓', desc:'Passed your first quiz',           tier:'bronze',   category:'academy' },
+    { id:'quiz5',        name:'Quiz Hustler',       icon:'📝', desc:'Passed 5 quizzes',                 tier:'silver',   category:'academy' },
+    { id:'quiz10',       name:'Knowledge Seeker',   icon:'🧠', desc:'Passed 10 quizzes',                tier:'gold',     category:'academy' },
+    { id:'perfect_quiz', name:'Perfect Score',      icon:'💯', desc:'100% on any quiz',                 tier:'gold',     category:'academy' },
+    { id:'all_brands',   name:'Brand Master',       icon:'🏷️', desc:'Completed all brand modules',      tier:'platinum', category:'academy' },
+    { id:'all_cats',     name:'Category Expert',    icon:'📂', desc:'Completed all category modules',   tier:'gold',     category:'academy' },
+    { id:'all_skills',   name:'Selling Pro',        icon:'💼', desc:'Completed all selling modules',    tier:'gold',     category:'academy' },
+    { id:'all_modules',  name:'Complete Package',   icon:'🎯', desc:'Completed every single module',    tier:'diamond',  category:'academy' },
+    // Streak Badges
+    { id:'streak3',      name:'Hot Streak',         icon:'🔥', desc:'3-day login streak',               tier:'bronze',   category:'streak' },
+    { id:'streak7',      name:'Week Warrior',       icon:'⚡', desc:'7-day login streak',               tier:'silver',   category:'streak' },
+    { id:'streak14',     name:'Two Week Force',     icon:'💪', desc:'14-day login streak',              tier:'gold',     category:'streak' },
+    { id:'streak30',     name:'Monthly Legend',     icon:'🌟', desc:'30-day login streak',              tier:'diamond',  category:'streak' },
+    // XP Badges
+    { id:'xp500',        name:'Rising Star',        icon:'⭐', desc:'Reached 500 XP',                  tier:'bronze',   category:'xp' },
+    { id:'xp2000',       name:'XP Machine',         icon:'💫', desc:'Reached 2000 XP',                 tier:'silver',   category:'xp' },
+    { id:'xp5000',       name:'Power Level',        icon:'🏆', desc:'Reached 5000 XP',                 tier:'gold',     category:'xp' },
+    { id:'xp10000',      name:'XP Titan',           icon:'👑', desc:'Reached 10,000 XP',               tier:'diamond',  category:'xp' },
+    // Sales Excellence (rank-based, no ₹ values shown to stylists)
+    { id:'atv_top10',    name:'High Ticket',        icon:'🎫', desc:'Top 10% ATV in store',            tier:'silver',   category:'sales' },
+    { id:'upt_top10',    name:'Bundle King/Queen',  icon:'📦', desc:'Top 10% UPT in store',            tier:'silver',   category:'sales' },
+    { id:'conv_top10',   name:'Closer',             icon:'🎯', desc:'Top 10% conversion rate',         tier:'silver',   category:'sales' },
+    { id:'rank1',        name:'Store Champion',     icon:'🥇', desc:'Ranked #1 in your store',         tier:'gold',     category:'sales' },
+    { id:'rank_top3',    name:'Podium Finisher',    icon:'🏆', desc:'Top 3 in store this month',       tier:'gold',     category:'sales' },
+    // Social Badges
+    { id:'first_applause',name:'Fan Favourite',     icon:'👏', desc:'Received your first applause',    tier:'bronze',   category:'social' },
+    { id:'applause10',   name:'Crowd Pleaser',      icon:'🎉', desc:'Received 10 applauses',           tier:'silver',   category:'social' },
+    { id:'gave_applause',name:'Team Player',        icon:'🤝', desc:'Gave applause to a colleague',    tier:'bronze',   category:'social' },
+    // Mission Badges
+    { id:'mission1',     name:'Mission Ready',      icon:'📋', desc:'Completed your first mission',    tier:'bronze',   category:'mission' },
+    { id:'mission10',    name:'Mission Possible',   icon:'🚀', desc:'Completed 10 missions',           tier:'silver',   category:'mission' },
+    { id:'mission30',    name:'Mission Impossible', icon:'💥', desc:'Completed 30 missions',           tier:'gold',     category:'mission' },
+    // Special
+    { id:'early_bird',   name:'Early Bird',         icon:'🌅', desc:'Logged in before 9am',            tier:'bronze',   category:'special' },
+    { id:'night_owl',    name:'Night Owl',           icon:'🦉', desc:'Logged in after 8pm',             tier:'bronze',   category:'special' },
+    { id:'weekend_grind',name:'Weekend Warrior',    icon:'🗓️', desc:'Trained on a weekend',            tier:'silver',   category:'special' }
+  ],
+
+  // ── MISSION TEMPLATES ─────────────────────────────────────
+  missionTemplates: [
+    { id:'m_quiz',      text:'Complete any {n} quiz today',       xp:50,  type:'quiz',    target:1 },
+    { id:'m_video',     text:'Watch a training video',            xp:30,  type:'video',   target:1 },
+    { id:'m_brand',     text:'Finish a brand module',             xp:80,  type:'brand',   target:1 },
+    { id:'m_login',     text:'Log in 3 days in a row',            xp:40,  type:'streak',  target:3 },
+    { id:'m_atv',       text:'Focus on ATV — upsell every bill',  xp:60,  type:'sales',   target:0 },
+    { id:'m_upt',       text:'Add a cross-sell item each bill',   xp:60,  type:'sales',   target:0 },
+    { id:'m_applause',  text:'Recognise a teammate today',        xp:20,  type:'social',  target:1 },
+    { id:'m_score',     text:'Score 80%+ on any quiz',            xp:70,  type:'quiz',    target:1 }
+  ],
+
+  // ── PERFORMANCE INDEX WEIGHTS ─────────────────────────────
+  piWeights: {
+    salesRankPctile:   0.35,  // rank among all SPs
+    atvPctile:         0.25,  // avg ticket value percentile
+    uptPctile:         0.20,  // units per ticket percentile
+    academyCompletion: 0.12,  // % of modules completed
+    streakBonus:       0.08   // streak consistency
+  },
 
   // ── STORES ────────────────────────────────────────────────
   stores: [

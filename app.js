@@ -257,6 +257,8 @@ const APP = {
     this.buildShell();
     this.navigate('dashboard');
     this.toast(`Welcome back, ${user.name.split(' ')[0]}! 🎓`, 'success');
+    // Check for newly earned badges after login XP is applied
+    setTimeout(() => this.checkAndAwardBadges(this.getUser()), 1500);
   },
 
   logout() {
@@ -296,8 +298,15 @@ const APP = {
 
     const learningNav = `
       <div class="nav-section">
-        <div class="nav-section-title">Learning</div>
+        <div class="nav-section-title">Performance</div>
         <div class="nav-item" onclick="APP.navigate('dashboard')"><span class="icon">🏠</span><span>My Dashboard</span></div>
+        <div class="nav-item" onclick="APP.navigate('missions')"><span class="icon">📋</span><span>Daily Missions</span></div>
+        <div class="nav-item" onclick="APP.navigate('report-card')"><span class="icon">📊</span><span>Report Card</span></div>
+        <div class="nav-item" onclick="APP.navigate('social-wall')"><span class="icon">👏</span><span>Recognition Wall</span></div>
+        <div class="nav-item" onclick="APP.navigate('live-store')"><span class="icon">⚡</span><span>Live Scoreboard</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Learning</div>
         <div class="nav-item" onclick="APP.navigate('brand-academy')"><span class="icon">🏷️</span><span>Brand Academy</span></div>
         <div class="nav-item" onclick="APP.navigate('category-academy')"><span class="icon">📂</span><span>Category Academy</span></div>
         <div class="nav-item" onclick="APP.navigate('selling-skills')"><span class="icon">📈</span><span>Selling Skills</span></div>
@@ -356,6 +365,10 @@ const APP = {
           case 'quiz':            topTitle.textContent = '📝 Assessment';            this.renderQuiz(content, params); break;
           case 'results':         topTitle.textContent = '📊 Results';               this.renderResults(content, params); break;
           case 'certificate':     topTitle.textContent = '🎓 Certificate';           this.renderCertificate(content, params); break;
+          case 'missions':         topTitle.textContent = '📋 Daily Missions';         this.renderMissions(content); break;
+          case 'report-card':     topTitle.textContent = '📊 My Report Card';        this.renderReportCard(content); break;
+          case 'social-wall':     topTitle.textContent = '👏 Recognition Wall';      this.renderSocialWall(content); break;
+          case 'live-store':      topTitle.textContent = '⚡ Live Scoreboard';       this.renderLiveStore(content); break;
           case 'leaderboard':     topTitle.textContent = '🏆 Leaderboard';           this.renderLeaderboard(content); break;
           case 'my-certs':        topTitle.textContent = '🎓 My Certificates';       this.renderMyCerts(content); break;
           case 'ai-coach':        topTitle.textContent = '🤖 AI Retail Coach';       this.renderAICoach(content); break;
@@ -422,36 +435,73 @@ const APP = {
       ${sp.monthly && sp.monthly.length > 0 ? this.renderMonthlyTrend(sp, storeRec, isStylist) : ''}`;
     }
 
+    const pi = this.calculatePI(u, sp, { completionPct });
+    const streak = this.getStreak(u);
+    const missions = this.getDailyMissions(u, sp, myProg);
+    const badges = this.getEarnedBadges(u, sp, myProg);
+    const completedMissions = (this.storage.get('completed_missions_' + u.id) || []);
+
     el.innerHTML = `<div class="fade-in">
       <!-- WELCOME HERO -->
-      <div class="card card-gold mb-2" style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
-          <div class="text-sm muted mb-1">Welcome back</div>
-          <div class="text-2xl font-bold">${u.name} <span style="font-size:1.2rem">${lp.current.badge}</span></div>
-          <div class="text-sm" style="color:var(--gold);margin-top:0.25rem">${lp.current.name}${lp.next ? ' → ' + lp.next.name : ' · Master Level'}</div>
-          <div style="margin-top:1rem">
-            <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:#666;margin-bottom:0.35rem">
-              <span>${u.xp || 0} XP</span>
-              ${lp.next ? `<span>${lp.next.minXP} XP</span>` : '<span>MAX</span>'}
+      <div class="card card-gold mb-2">
+        <div style="display:flex;align-items:flex-start;gap:1.5rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div class="text-sm muted mb-1">Welcome back</div>
+            <div class="text-2xl font-bold">${u.name} <span style="font-size:1.2rem">${lp.current.badge}</span></div>
+            <div class="text-sm" style="color:var(--gold);margin-top:0.25rem">${lp.current.name}${lp.next ? ' → ' + lp.next.name : ' · Legend'}</div>
+            <div style="margin-top:1rem">
+              <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:#666;margin-bottom:0.35rem">
+                <span>${u.xp || 0} XP</span>
+                ${lp.next ? `<span>${lp.next.minXP} XP to ${lp.next.name}</span>` : '<span>MAX LEVEL</span>'}
+              </div>
+              <div class="xp-bar"><div class="xp-fill" style="width:${lp.pct}%"></div></div>
             </div>
-            <div class="xp-bar"><div class="xp-fill" style="width:${lp.pct}%"></div></div>
           </div>
-        </div>
-        <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
-          ${this.kpiMini('LB Rank', myLBRank > 0 ? '#' + myLBRank : 'N/A', 'Academy XP')}
-          ${this.kpiMini('Modules', completionPct + '%', 'Completed')}
-          ${sp ? this.kpiMini('Sales Rank', '#' + sp.rankSales, 'All Stylists') : ''}
-          ${sp ? this.kpiMini('ATV Rank', '#' + sp.rankATV, 'Ticket Value') : ''}
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
+            <!-- PI Ring -->
+            <div class="pi-ring-wrap" onclick="APP.navigate('report-card')" title="Performance Index">
+              <svg viewBox="0 0 60 60" class="pi-ring">
+                <circle cx="30" cy="30" r="25" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5"/>
+                <circle cx="30" cy="30" r="25" fill="none" stroke="var(--gold)" stroke-width="5"
+                  stroke-dasharray="${Math.round(pi * 1.571)} 157.1" stroke-linecap="round" transform="rotate(-90 30 30)"/>
+              </svg>
+              <div class="pi-ring-val">${pi}</div>
+              <div class="pi-ring-label">PI Score</div>
+            </div>
+            <!-- Streak -->
+            <div class="streak-badge ${streak.current >= 3 ? 'hot' : ''}" onclick="APP.navigate('missions')">
+              <div class="streak-fire">${streak.current >= 7 ? '🔥' : streak.current >= 3 ? '⚡' : '📅'}</div>
+              <div class="streak-num">${streak.current}</div>
+              <div class="streak-label">Day Streak</div>
+            </div>
+          </div>
         </div>
       </div>
 
+      <!-- QUICK STATS -->
+      <div class="kpi-grid">
+        <div class="card kpi-hover" onclick="APP.navigate('leaderboard')"><div class="card-title">Academy Rank</div><div class="card-value gold">${myLBRank > 0 ? '#' + myLBRank : '–'}</div><div class="card-sub">Among all stylists</div></div>
+        <div class="card kpi-hover" onclick="APP.navigate('missions')"><div class="card-title">Today's Missions</div><div class="card-value">${completedMissions.filter(m=>m.date===new Date().toDateString()).length}/${missions.length}</div><div class="card-sub">${missions.length > 0 ? '+' + missions.reduce((s,m)=>s+m.xp,0) + ' XP available' : 'All done!'}</div></div>
+        <div class="card kpi-hover" onclick="APP.navigate('report-card')"><div class="card-title">Badges Earned</div><div class="card-value">${badges.length}</div><div class="card-sub">of ${IRA_DATA.badges.length} total</div></div>
+        <div class="card kpi-hover" onclick="APP.navigate('report-card')"><div class="card-title">Learning Progress</div><div class="card-value">${completionPct}%</div><div class="card-sub">${completedModules} of ${totalModules} modules</div></div>
+      </div>
+
+      <!-- DAILY MISSIONS PREVIEW -->
+      ${missions.length > 0 ? `
+      <div class="section-header"><h3>📋 Today's Missions</h3><button class="btn btn-outline btn-sm" onclick="APP.navigate('missions')">View All</button></div>
+      <div class="missions-preview">
+        ${missions.slice(0,3).map(m => {
+          const done = completedMissions.some(c => c.id === m.id && c.date === new Date().toDateString());
+          return `<div class="mission-card-mini ${done?'done':''}">
+            <div class="mission-icon">${done?'✅':'🎯'}</div>
+            <div class="mission-text">${m.text}</div>
+            <div class="mission-xp">+${m.xp} XP</div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
       <!-- LEARNING KPI -->
       <div class="kpi-grid">
-        <div class="card"><div class="card-title">Modules Completed</div><div class="card-value">${completedModules}</div><div class="card-sub">of ${totalModules} total</div></div>
-        <div class="card"><div class="card-title">Learning Progress</div><div class="card-value">${completionPct}%</div><div class="card-sub">Overall completion</div></div>
-        <div class="card"><div class="card-title">Total XP Earned</div><div class="card-value">${u.xp || 0}</div><div class="card-sub">${lp.current.name} level</div></div>
-        <div class="card"><div class="card-title">Academy Rank</div><div class="card-value">${myLBRank > 0 ? '#' + myLBRank : '–'}</div><div class="card-sub">Among all stylists</div></div>
-      </div>
 
       <!-- SALES KPIs (real data) -->
       ${salesSection}
@@ -1262,23 +1312,120 @@ const APP = {
 
   // ── AI COACH ─────────────────────────────────────────────
   renderAICoach(el) {
+    const u = this.getUser();
+    const sp = this.getSalesRecord(u);
+    const prog = this.storage.get('progress', {});
+    const insights = this.getPersonalizedInsights(u, sp, prog);
+    const completeMission = () => this.completeMission('daily_coach', 20);
+
     el.innerHTML = `<div class="fade-in" style="max-width:800px;margin:0 auto">
+
+      <!-- Personalized Daily Insights -->
+      ${insights.length > 0 ? `
+      <div class="section-header"><h3>🎯 Today's Personalized Coaching</h3><span class="muted text-xs">Based on your performance data</span></div>
+      ${insights.map(ins=>`<div class="coach-insight">
+        <div class="coach-insight-header">${ins.icon} ${ins.title}</div>
+        <div class="coach-insight-body">${ins.body}</div>
+        <div class="coach-insight-action">→ ${ins.action}</div>
+      </div>`).join('')}
+      <hr class="divider">` : ''}
+
+      <div class="section-header"><h3>🤖 Ask AI Coach</h3></div>
       <div class="coach-layout">
         <div class="coach-messages" id="coach-msgs">
           <div class="msg msg-ai">${IRA_DATA.aiCoachKB.greeting}</div>
         </div>
         <div>
           <div class="quick-questions mb-1">
-            ${['How do I measure bra size?','Best bra for daily office?','How to cross-sell?','Handle price objection','Recommend for gym','Triumph vs Amante?'].map(q=>
+            ${['How do I measure bra size?','Best bra for daily office?','How to cross-sell?','Handle price objection','Recommend for gym','Triumph vs Amante?','How to improve my ATV?','What is sister sizing?'].map(q=>
               `<button class="quick-q" onclick="APP.askCoach('${q}')">${q}</button>`).join('')}
           </div>
           <div class="coach-input-row">
-            <input class="coach-input" id="coach-input" placeholder="Ask me anything about products, selling, fitting..." onkeydown="if(event.key==='Enter')APP.sendCoach()">
+            <input class="coach-input" id="coach-input" placeholder="Ask me anything about products, selling, fitting..." onkeydown="if(event.key==='Enter'){APP.sendCoach();${insights.length?'':''}}" >
             <button class="btn btn-gold" onclick="APP.sendCoach()">Ask →</button>
           </div>
         </div>
       </div>
     </div>`;
+  },
+
+  getPersonalizedInsights(u, sp, prog) {
+    const insights = [];
+    const myProg = (prog || {})[u.id] || {};
+    const completedCount = Object.values(myProg).filter(p => p.quizPassed).length;
+    const totalModules = IRA_DATA.brands.length + IRA_DATA.categories.length + (IRA_DATA.sellingModules||[]).length;
+    const streak = this.getStreak(u);
+
+    if (sp) {
+      // ATV coaching
+      if (sp.atvPctile < 50) {
+        insights.push({
+          icon: '🎫',
+          title: 'Boost Your Average Ticket Value',
+          body: `Your ATV is in the bottom ${Math.round(100-sp.atvPctile)}% of stylists. The store average is likely higher. Try this: Before every billing, say "Would you like a matching panty to complete the set?" — this alone adds ₹300–500 per transaction.`,
+          action: `Target: add one cross-sell item per customer today. Even 2 success = meaningful ATV lift.`
+        });
+      } else if (sp.atvPctile >= 80) {
+        insights.push({
+          icon: '🏆',
+          title: 'Maintain Your ATV Leadership',
+          body: `You're in the top ${Math.round(100-sp.atvPctile)+1}% for Avg Ticket Value — excellent! Your upselling and cross-selling skills are paying off. Now focus on UPT to make every bill even stronger.`,
+          action: `Aim for 3+ items per bill. Suggest accessories (bralette, cami) with every lingerie purchase.`
+        });
+      }
+
+      // UPT coaching
+      if (sp.uptPctile < 40) {
+        insights.push({
+          icon: '📦',
+          title: 'Improve Units Per Transaction',
+          body: `Your UPT of ${sp.upt.toFixed(1)} is below the store benchmark. Every bra sale is an opportunity: matching panties, backup size, or a sports bra for the gym. The "ABV" rule — Always Bring Value — means never letting a customer leave with just one item.`,
+          action: `Next customer: show them 2 options minimum. "While I have your size, let me show you something else you'd love."`
+        });
+      }
+
+      // Conversion coaching
+      if (sp.rankSales > 5 && sp.bills < 10) {
+        insights.push({
+          icon: '🎯',
+          title: 'Convert More Browsing to Buying',
+          body: `With ${sp.bills} transactions, focus on greeting every customer within 30 seconds. Research shows a warm greeting within 30 seconds increases purchase likelihood by 40%. Use open questions: "What brings you in today?" not "Can I help you?"`,
+          action: `Today: greet every customer by name after fitting. "Let me check your exact size — that's how we find your perfect fit."`
+        });
+      }
+
+      // Top performer nudge
+      if (sp.salesPctile >= 75) {
+        insights.push({
+          icon: '🌟',
+          title: 'You\'re a Top Performer — Lead by Example',
+          body: `You're in the top ${Math.round(100-sp.salesPctile)+1}% of all stylists. Your store looks to you. Share what's working — how you open the fitting room conversation, how you recommend the right size, how you close a cross-sell.`,
+          action: `Mentor a colleague today. Teaching reinforces your own skills and earns recognition.`
+        });
+      }
+    }
+
+    // Learning coaching
+    if (completedCount < 3) {
+      insights.push({
+        icon: '🎓',
+        title: 'Unlock Your Product Knowledge Edge',
+        body: `You've completed ${completedCount} of ${totalModules} training modules. Stylists with 5+ completions typically perform 20% better because they can speak confidently about product benefits, fabrics, and fit — which builds customer trust and reduces price objections.`,
+        action: `Complete one brand module today. Start with Amante or Enamor — highest customer ask in most stores.`
+      });
+    }
+
+    // Streak coaching
+    if (streak.current === 0) {
+      insights.push({
+        icon: '🔥',
+        title: 'Start Your Streak Today',
+        body: `Daily engagement is the foundation of top performance. Logging in daily keeps your skills fresh, your missions active, and your XP multiplier growing. A 7-day streak gives you 1.5× XP on every mission.`,
+        action: `Log in tomorrow to start your streak. Set a daily reminder at 9am.`
+      });
+    }
+
+    return insights.slice(0, 3);
   },
 
   askCoach(question) {
@@ -1352,13 +1499,70 @@ const APP = {
       : [];
     const totalStores = storeList.length;
 
+    // Build AI coaching recommendations for the manager
+    const needsCoaching = teamData.filter(x => x.trainPct < 30 || (x.sp && x.sp.salesPctile < 30));
+    const champions     = teamData.filter(x => x.sp && x.sp.salesPctile >= 75);
+    const improving     = teamData.filter(x => x.sp && x.sp.salesPctile >= 40 && x.sp.salesPctile < 75);
+    const promotionReady= teamData.filter(x => x.trainPct >= 70 && x.sp && x.sp.salesPctile >= 70 && (x.xp||0) >= 2000);
+
     el.innerHTML = `<div class="fade-in">
+
+      <!-- MANAGER AI BRIEFING -->
+      <div class="card card-gold mb-2">
+        <div class="card-title">🤖 AI Manager Briefing — Today</div>
+        <div class="text-sm" style="margin-top:0.5rem;line-height:1.8;color:#ddd">
+          ${needsCoaching.length > 0 ? `⚠️ <strong>${needsCoaching.length} team member${needsCoaching.length>1?'s':''} need${needsCoaching.length===1?'s':''} coaching</strong> — low training or sales performance.<br>` : ''}
+          ${champions.length > 0 ? `🏆 <strong>${champions.map(x=>x.name.split(' ')[0]).join(', ')}</strong> — deserves recognition today.<br>` : ''}
+          ${promotionReady.length > 0 ? `⭐ <strong>${promotionReady[0].name}</strong> is promotion-ready — consider a conversation.<br>` : ''}
+          ${needsCoaching.length === 0 && champions.length === 0 ? `✅ Team is on track. Focus on learning module completion this week.` : ''}
+        </div>
+      </div>
+
       <div class="kpi-grid mb-2">
         <div class="card"><div class="card-title">Team Members</div><div class="card-value">${teamData.length}</div></div>
-        <div class="card"><div class="card-title">Avg Training %</div><div class="card-value">${Math.round(teamData.reduce((s,x)=>s+x.trainPct,0)/Math.max(teamData.length,1))}%</div></div>
-        <div class="card"><div class="card-title">Certified Stylists</div><div class="card-value">${teamData.filter(x=>x.completed>=3).length}</div><div class="card-sub">3+ certs</div></div>
-        <div class="card"><div class="card-title">Needs Coaching</div><div class="card-value">${teamData.filter(x=>x.trainPct<30).length}</div><div class="card-sub">Below 30% training</div></div>
+        <div class="card"><div class="card-title">Avg Training</div><div class="card-value">${Math.round(teamData.reduce((s,x)=>s+x.trainPct,0)/Math.max(teamData.length,1))}%</div></div>
+        <div class="card"><div class="card-title">Top Performers</div><div class="card-value gold">${champions.length}</div><div class="card-sub">Top 25% sales</div></div>
+        <div class="card"><div class="card-title">Need Coaching</div><div class="card-value" style="color:#ef5350">${needsCoaching.length}</div><div class="card-sub">Low training/sales</div></div>
       </div>
+
+      <!-- COACHING CARDS -->
+      ${needsCoaching.length > 0 ? `
+      <div class="section-header"><h3>⚠️ Needs Coaching</h3></div>
+      <div class="coaching-grid">
+        ${needsCoaching.map(x => {
+          const issues = [];
+          if (x.trainPct < 30) issues.push(`training at ${x.trainPct}%`);
+          if (x.sp && x.sp.salesPctile < 30) issues.push(`sales in bottom ${Math.round(100-x.sp.salesPctile)}%`);
+          return `<div class="coaching-card risk">
+            <div class="coaching-tag red">⚠ Needs Coaching</div>
+            <div class="coaching-name">${x.name}</div>
+            <div class="coaching-store">${x.storeId || '—'}</div>
+            <div class="coaching-action">Issues: ${issues.join(', ')}.<br>Suggested: 1-on-1 this week. Review product knowledge, observe one customer interaction, set a specific ATV target for next 7 days.</div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
+      ${champions.length > 0 ? `
+      <div class="section-header"><h3>🏆 Champions — Recognise Today</h3></div>
+      <div class="coaching-grid">
+        ${champions.map(x => `<div class="coaching-card champion">
+          <div class="coaching-tag green">🏆 Champion</div>
+          <div class="coaching-name">${x.name}</div>
+          <div class="coaching-store">${x.storeId || '—'} · Sales Rank #${x.sp.rankSales}</div>
+          <div class="coaching-action">ATV Rank #${x.sp.rankATV} · UPT ${x.sp.upt.toFixed(1)}<br>Suggested: Public recognition in today's briefing. Give applause on the Recognition Wall.</div>
+        </div>`).join('')}
+      </div>` : ''}
+
+      ${promotionReady.length > 0 ? `
+      <div class="section-header"><h3>⭐ Promotion Ready</h3></div>
+      <div class="coaching-grid">
+        ${promotionReady.map(x => `<div class="coaching-card ready">
+          <div class="coaching-tag gold">⭐ Promotion Ready</div>
+          <div class="coaching-name">${x.name}</div>
+          <div class="coaching-store">${x.storeId || '—'} · ${x.levelInfo.badge} ${x.levelInfo.name}</div>
+          <div class="coaching-action">${x.xp||0} XP · ${x.trainPct}% training · Top ${Math.round(100-x.sp.salesPctile)+1}% sales<br>Suggested: Career conversation. Discuss next role, responsibilities, and development plan.</div>
+        </div>`).join('')}
+      </div>` : ''}
 
       <!-- STORE PERFORMANCE (real data) -->
       <div class="section-header"><h3>🏪 Store Performance — Real KPIs</h3><span class="text-xs muted">ATV, UPT, Bills visible to managers only</span></div>
@@ -1853,6 +2057,505 @@ const APP = {
     if (fill) fill.style.width = lp.pct + '%';
     if (label) label.textContent = lp.current.badge + ' ' + lp.current.name;
     if (val) val.textContent = (u.xp || 0) + ' XP';
+  },
+
+  // ── RPOS: PERFORMANCE INDEX ──────────────────────────────
+  calculatePI(u, sp, extra) {
+    const w = IRA_DATA.piWeights;
+    let score = 0;
+    // Sales rank percentile (0–100)
+    if (sp) {
+      score += (sp.salesPctile || 0) * w.salesRankPctile;
+      score += (sp.atvPctile   || 0) * w.atvPctile;
+      score += (sp.uptPctile   || 0) * w.uptPctile;
+    } else {
+      // Non-SP: distribute weight to other factors
+      score += 50 * (w.salesRankPctile + w.atvPctile + w.uptPctile);
+    }
+    score += ((extra && extra.completionPct) || 0) * w.academyCompletion;
+    const streak = this.getStreak(u);
+    const streakScore = Math.min(100, streak.current * 5);
+    score += streakScore * w.streakBonus;
+    return Math.min(100, Math.round(score));
+  },
+
+  // ── RPOS: STREAK TRACKING ────────────────────────────────
+  getStreak(u) {
+    const log = this.storage.get('xp_log', []);
+    const loginDays = [...new Set(
+      log.filter(e => e.userId === u.id && e.reason === 'Daily Login')
+         .map(e => new Date(e.date).toDateString())
+    )].sort((a,b) => new Date(b) - new Date(a));
+
+    let current = 0;
+    let d = new Date();
+    for (let i = 0; i < 90; i++) {
+      if (loginDays.includes(d.toDateString())) { current++; d.setDate(d.getDate()-1); }
+      else { break; }
+    }
+    return { current, longest: Math.max(current, this.storage.get('best_streak_'+u.id) || 0) };
+  },
+
+  // ── RPOS: DAILY MISSIONS ─────────────────────────────────
+  getDailyMissions(u, sp, prog) {
+    const seed = u.id + new Date().toDateString();
+    let hash = 0;
+    for (const c of seed) hash = ((hash << 5) - hash + c.charCodeAt(0)) | 0;
+    const myProg = prog[u.id] || {};
+    const completedModuleCount = Object.values(myProg).filter(p => p.quizPassed).length;
+
+    const pool = [
+      { id:'daily_quiz',    text:'Pass any quiz with 70%+ score',         xp:50, type:'quiz'    },
+      { id:'daily_video',   text:'Watch a training video today',           xp:30, type:'video'   },
+      { id:'daily_brand',   text:'Explore a Brand Academy module',         xp:40, type:'brand'   },
+      { id:'daily_login',   text:'Log in for 3 days in a row',             xp:40, type:'streak'  },
+      { id:'daily_skill',   text:'Complete a Selling Skills lesson',       xp:35, type:'skill'   },
+      { id:'daily_perfect', text:'Score 100% on any quiz',                 xp:80, type:'quiz'    },
+      { id:'daily_social',  text:'Give a colleague applause today',        xp:25, type:'social'  },
+      { id:'daily_coach',   text:'Ask the AI Coach a question',            xp:20, type:'coach'   },
+    ];
+
+    // Pick 3 missions deterministically based on day seed
+    const picks = [];
+    const used = new Set();
+    let n = Math.abs(hash);
+    while (picks.length < 3 && picks.length < pool.length) {
+      const idx = n % pool.length;
+      if (!used.has(idx)) { used.add(idx); picks.push(pool[idx]); }
+      n = Math.floor(n / pool.length) + idx + 1;
+    }
+    return picks;
+  },
+
+  completeMission(missionId, xp) {
+    const u = this.getUser();
+    const today = new Date().toDateString();
+    const key = 'completed_missions_' + u.id;
+    const done = this.storage.get(key) || [];
+    if (done.some(m => m.id === missionId && m.date === today)) return;
+    done.push({ id: missionId, date: today });
+    this.storage.set(key, done);
+    this.addXP(u.id, xp, 'Mission: ' + missionId);
+    this.toast(`Mission complete! +${xp} XP`, 'success');
+    this.checkAndAwardBadges(u);
+  },
+
+  // ── RPOS: BADGES ─────────────────────────────────────────
+  getEarnedBadges(u, sp, prog) {
+    const myProg = (prog || this.storage.get('progress',{}))[u.id] || {};
+    const completedKeys = Object.keys(myProg).filter(k => myProg[k].quizPassed);
+    const log = this.storage.get('xp_log', []);
+    const streak = this.getStreak(u);
+    const completedMissions = (this.storage.get('completed_missions_'+u.id) || []);
+    const applause = this.storage.get('applause', []) || [];
+    const hour = new Date().getHours();
+
+    const earned = [];
+    const check = (id) => {
+      const badge = IRA_DATA.badges.find(b => b.id === id);
+      if (badge && !earned.find(e => e.id === id)) earned.push(badge);
+    };
+
+    // Academy badges
+    if (completedKeys.length >= 1)  check('first_quiz');
+    if (completedKeys.length >= 5)  check('quiz5');
+    if (completedKeys.length >= 10) check('quiz10');
+    if (Object.values(myProg).some(p => p.lastScore >= 100)) check('perfect_quiz');
+    if (IRA_DATA.brands.every(b => myProg[b.id]?.quizPassed)) check('all_brands');
+    if (IRA_DATA.categories.every(c => myProg[c.id]?.quizPassed)) check('all_cats');
+    const allTotal = IRA_DATA.brands.length + IRA_DATA.categories.length + (IRA_DATA.sellingModules||[]).length;
+    if (completedKeys.length >= allTotal && allTotal > 0) check('all_modules');
+
+    // Streak badges
+    if (streak.current >= 3)  check('streak3');
+    if (streak.current >= 7)  check('streak7');
+    if (streak.current >= 14) check('streak14');
+    if (streak.current >= 30) check('streak30');
+
+    // XP badges
+    const xp = u.xp || 0;
+    if (xp >= 500)   check('xp500');
+    if (xp >= 2000)  check('xp2000');
+    if (xp >= 5000)  check('xp5000');
+    if (xp >= 10000) check('xp10000');
+
+    // Sales badges (rank-based, safe for all roles)
+    if (sp) {
+      if (sp.rankATV === 1 || sp.rankUPT === 1) check('rank1');
+      if (sp.rankSales <= 3) check('rank_top3');
+      if (sp.atvPctile >= 90) check('atv_top10');
+      if (sp.uptPctile >= 90) check('upt_top10');
+    }
+
+    // Mission badges
+    const totalMissions = completedMissions.length;
+    if (totalMissions >= 1)  check('mission1');
+    if (totalMissions >= 10) check('mission10');
+    if (totalMissions >= 30) check('mission30');
+
+    // Social
+    const myApplause = applause.filter(a => a.to === u.id);
+    const gaveApplause = applause.filter(a => a.from === u.id);
+    if (myApplause.length >= 1)  check('first_applause');
+    if (myApplause.length >= 10) check('applause10');
+    if (gaveApplause.length >= 1) check('gave_applause');
+
+    // Special
+    if (hour < 9)  check('early_bird');
+    if (hour >= 20) check('night_owl');
+    const dayOfWeek = new Date().getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) check('weekend_grind');
+
+    return earned;
+  },
+
+  checkAndAwardBadges(u) {
+    const prog = this.storage.get('progress', {});
+    const sp = this.getSalesRecord(u);
+    const newBadges = this.getEarnedBadges(u, sp, prog);
+    const prev = this.storage.get('earned_badges_' + u.id) || [];
+    const prevIds = new Set(prev.map(b => b.id));
+    newBadges.forEach(b => {
+      if (!prevIds.has(b.id)) {
+        this.toast(`${b.icon} Badge Unlocked: ${b.name}!`, 'success');
+      }
+    });
+    this.storage.set('earned_badges_' + u.id, newBadges);
+  },
+
+  // ── RPOS: MISSIONS SCREEN ────────────────────────────────
+  renderMissions(el) {
+    const u = this.getUser();
+    const sp = this.getSalesRecord(u);
+    const prog = this.storage.get('progress', {});
+    const missions = this.getDailyMissions(u, sp, prog);
+    const completedToday = (this.storage.get('completed_missions_'+u.id)||[])
+      .filter(m => m.date === new Date().toDateString());
+    const streak = this.getStreak(u);
+    const allDone = completedToday.filter(m => missions.some(ms => ms.id === m.id));
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>📋 Today's Missions</h3><span class="muted text-sm">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'})}</span></div>
+
+      <!-- Streak banner -->
+      <div class="card streak-banner ${streak.current>=7?'hot':''}">
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+          <div style="font-size:2.5rem">${streak.current>=14?'🔥':streak.current>=7?'⚡':streak.current>=3?'✨':'📅'}</div>
+          <div style="flex:1">
+            <div class="text-lg font-bold">${streak.current}-Day Streak${streak.current>=7?' 🔥':''}</div>
+            <div class="muted text-sm">Best: ${streak.longest} days · Keep it up to earn bonus XP!</div>
+          </div>
+          <div class="streak-multiplier">
+            <div class="text-2xl font-bold" style="color:var(--gold)">${streak.current>=7?'2×':streak.current>=3?'1.5×':'1×'}</div>
+            <div class="text-xs muted">XP Multiplier</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Missions -->
+      <div class="missions-list">
+        ${missions.map(m => {
+          const done = completedToday.some(c => c.id === m.id);
+          const mult = streak.current >= 7 ? 2 : streak.current >= 3 ? 1.5 : 1;
+          const finalXP = Math.round(m.xp * mult);
+          return `<div class="mission-card ${done?'mission-done':''}">
+            <div class="mission-status">${done?'<span class="done-check">✅</span>':'<div class="mission-circle"></div>'}</div>
+            <div class="mission-body">
+              <div class="mission-title">${m.text}</div>
+              <div class="mission-meta">
+                ${mult > 1 ? `<span class="xp-tag streaked">+${finalXP} XP <span class="mult-badge">${mult}×</span></span>` : `<span class="xp-tag">+${finalXP} XP</span>`}
+              </div>
+            </div>
+            ${!done ? `<button class="btn btn-outline btn-sm" onclick="APP.completeMission('${m.id}',${finalXP})">Mark Done</button>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Progress -->
+      <div class="card" style="margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+          <span class="font-bold">Mission Progress</span>
+          <span class="gold font-bold">${allDone.length}/${missions.length} Done</span>
+        </div>
+        <div class="xp-bar"><div class="xp-fill" style="width:${missions.length?Math.round(allDone.length/missions.length*100):0}%"></div></div>
+        ${allDone.length === missions.length ? '<div class="mt-1 text-sm gold">🏆 All missions complete! Incredible work today.</div>' : ''}
+      </div>
+
+      <!-- Weekly history -->
+      <div class="section-header mt-2"><h3>📅 This Week</h3></div>
+      <div class="week-strip">
+        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day,i)=>{
+          const d = new Date(); d.setDate(d.getDate() - ((d.getDay()-i+7)%7));
+          const isFuture = d > new Date();
+          const dayStr = d.toDateString();
+          const hadLogin = (this.storage.get('xp_log',[])).some(e=>e.userId===u.id&&e.reason==='Daily Login'&&new Date(e.date).toDateString()===dayStr);
+          const isToday = dayStr === new Date().toDateString();
+          return `<div class="day-dot ${hadLogin?'active':''} ${isToday?'today':''} ${isFuture?'future':''}">
+            <div class="day-label">${day}</div>
+            <div class="day-circle">${hadLogin?'✓':isToday?'·':''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  },
+
+  // ── RPOS: REPORT CARD ────────────────────────────────────
+  renderReportCard(el) {
+    const u = this.getUser();
+    const sp = this.getSalesRecord(u);
+    const prog = this.storage.get('progress', {});
+    const myProg = prog[u.id] || {};
+    const completedKeys = Object.keys(myProg).filter(k => myProg[k].quizPassed);
+    const totalModules = IRA_DATA.brands.length + IRA_DATA.categories.length + (IRA_DATA.sellingModules||[]).length;
+    const completionPct = totalModules > 0 ? Math.round(completedKeys.length / totalModules * 100) : 0;
+    const lp = IRA_DATA.getXPProgress(u.xp || 0);
+    const streak = this.getStreak(u);
+    const pi = this.calculatePI(u, sp, { completionPct });
+    const badges = this.getEarnedBadges(u, sp, prog);
+    const isStylist = ['Retail Stylist','Senior Stylist'].includes(u.role);
+
+    const tierColors = { bronze:'#cd7f32', silver:'#c0c0c0', gold:'#ffd700', platinum:'#e5e4e2', diamond:'#b9f2ff' };
+
+    // Strengths & weaknesses based on SP data
+    let strengths = [], weaknesses = [];
+    if (sp) {
+      if (sp.atvPctile >= 70)  strengths.push('High Ticket Value (ATV)');
+      if (sp.uptPctile >= 70)  strengths.push('Strong Cross-Selling (UPT)');
+      if (sp.salesPctile >= 70) strengths.push('Overall Sales Performance');
+      if (sp.atvPctile < 40)   weaknesses.push('Avg Ticket Value needs improvement');
+      if (sp.uptPctile < 40)   weaknesses.push('Cross-selling & upselling');
+      if (sp.salesPctile < 40) weaknesses.push('Overall sales volume');
+    }
+    if (completionPct < 50) weaknesses.push('Academy module completion');
+    if (completionPct >= 80) strengths.push('Learning & Development');
+    if (streak.current >= 7) strengths.push('Consistent daily engagement');
+
+    el.innerHTML = `<div class="fade-in">
+      <!-- Report Card Header -->
+      <div class="report-card-hero">
+        <div class="report-avatar">${u.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div class="report-info">
+          <h2 class="report-name">${u.name}</h2>
+          <div class="report-role">${u.role}${u.storeId ? ' · ' + u.storeId : ''}</div>
+          <div class="report-level">${lp.current.badge} ${lp.current.name} <span class="muted text-sm">· ${lp.current.title}</span></div>
+        </div>
+        <div class="pi-score-big">
+          <div class="pi-big-val" style="color:${pi>=75?'#4caf50':pi>=50?'var(--gold)':'#f44336'}">${pi}</div>
+          <div class="pi-big-label">Performance Index</div>
+          <div class="pi-rating">${pi>=80?'🔥 Excellent':pi>=65?'⭐ Good':pi>=50?'📈 Average':'💪 Improving'}</div>
+        </div>
+      </div>
+
+      <!-- XP Progress -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+          <div><div class="font-bold">${lp.current.badge} ${lp.current.name}</div><div class="text-sm muted">${u.xp||0} XP total</div></div>
+          ${lp.next ? `<div class="text-sm muted">Next: ${lp.next.badge} ${lp.next.name} at ${lp.next.minXP} XP</div>` : '<div class="text-sm gold">MAX LEVEL</div>'}
+        </div>
+        <div class="xp-bar"><div class="xp-fill" style="width:${lp.pct}%"></div></div>
+        <div style="font-size:0.75rem;color:#666;margin-top:0.35rem;text-align:right">${lp.pct}% to next level</div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="card"><div class="card-title">🔥 Streak</div><div class="card-value gold">${streak.current}</div><div class="card-sub">days · Best: ${streak.longest}</div></div>
+        <div class="card"><div class="card-title">🎓 Modules</div><div class="card-value">${completionPct}%</div><div class="card-sub">${completedKeys.length} of ${totalModules} done</div></div>
+        ${sp ? `<div class="card"><div class="card-title">📊 Sales Rank</div><div class="card-value">#${sp.rankSales}</div><div class="card-sub">Percentile: ${Math.round(sp.salesPctile)}%</div></div>` : ''}
+        ${sp ? `<div class="card"><div class="card-title">🎫 ATV Rank</div><div class="card-value">#${sp.rankATV}</div><div class="card-sub">Percentile: ${Math.round(sp.atvPctile)}%</div></div>` : ''}
+      </div>
+
+      <!-- PI Breakdown -->
+      ${sp ? `<div class="section-header"><h3>📊 Performance Breakdown</h3></div>
+      <div class="card">
+        ${[
+          { label:'Sales Performance', val: Math.round(sp.salesPctile), max:100 },
+          { label:'Avg Ticket Value',  val: Math.round(sp.atvPctile),   max:100 },
+          { label:'Units Per Ticket',  val: Math.round(sp.uptPctile),   max:100 },
+          { label:'Academy Progress',  val: completionPct,              max:100 },
+          { label:'Daily Streak',      val: Math.min(100,streak.current*5), max:100 }
+        ].map(row=>`<div class="pi-row">
+            <div class="pi-row-label">${row.label}</div>
+            <div class="pi-row-bar"><div class="pi-row-fill" style="width:${row.val}%;background:${row.val>=70?'#4caf50':row.val>=50?'var(--gold)':'#f44336'}"></div></div>
+            <div class="pi-row-val">${row.val}%</div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Strengths & Weaknesses -->
+      ${strengths.length || weaknesses.length ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        ${strengths.length ? `<div class="card strength-card"><div class="card-title" style="color:#4caf50">💪 Strengths</div>${strengths.map(s=>`<div class="sw-item">✅ ${s}</div>`).join('')}</div>` : ''}
+        ${weaknesses.length ? `<div class="card weakness-card"><div class="card-title" style="color:#f44336">🎯 Focus Areas</div>${weaknesses.map(w=>`<div class="sw-item">→ ${w}</div>`).join('')}</div>` : ''}
+      </div>` : ''}
+
+      <!-- Badges -->
+      <div class="section-header"><h3>🏅 My Badges (${badges.length})</h3><button class="btn btn-outline btn-sm" onclick="APP.navigate('missions')">Earn More</button></div>
+      ${badges.length > 0 ? `<div class="badges-grid">
+        ${badges.map(b=>`<div class="badge-item tier-${b.tier}" title="${b.desc}">
+          <div class="badge-icon">${b.icon}</div>
+          <div class="badge-name">${b.name}</div>
+          <div class="badge-tier">${b.tier}</div>
+        </div>`).join('')}
+      </div>` : '<div class="card text-center muted" style="padding:2rem">Complete modules and missions to earn badges!</div>'}
+
+      <!-- Career Path -->
+      <div class="section-header mt-2"><h3>🗺️ Career Path</h3></div>
+      <div class="career-path">
+        ${IRA_DATA.levels.map(lvl=>{
+          const done = (u.xp||0) >= lvl.minXP;
+          const current = lp.current.id === lvl.id;
+          return `<div class="career-step ${done?'done':''} ${current?'current':''}">
+            <div class="career-badge">${lvl.badge}</div>
+            <div class="career-name">${lvl.name}</div>
+            <div class="career-xp">${lvl.minXP.toLocaleString()} XP</div>
+          </div>`;
+        }).join('<div class="career-arrow">→</div>')}
+      </div>
+    </div>`;
+  },
+
+  // ── RPOS: SOCIAL / RECOGNITION WALL ─────────────────────
+  renderSocialWall(el) {
+    const u = this.getUser();
+    const users = this.storage.get('users', []);
+    const applause = this.storage.get('applause', []) || [];
+    const myApplause = applause.filter(a => a.to === u.id);
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>👏 Recognition Wall</h3><span class="muted text-sm">Celebrate your team's wins</span></div>
+
+      <!-- Give Applause -->
+      <div class="card give-applause-card">
+        <div class="card-title">🎉 Give Applause</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;align-items:flex-end">
+          <div style="flex:1;min-width:150px">
+            <label class="text-xs muted">Recognise</label>
+            <select id="applause-to" class="input-select" style="width:100%;margin-top:0.25rem">
+              <option value="">Select colleague...</option>
+              ${users.filter(x=>x.id!==u.id&&['Retail Stylist','Senior Stylist','Store Manager'].includes(x.role)).map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}
+            </select>
+          </div>
+          <div style="flex:2;min-width:200px">
+            <label class="text-xs muted">Message</label>
+            <input id="applause-msg" class="input-text" style="width:100%;margin-top:0.25rem" placeholder="Amazing work on the fitting today! 🎉" maxlength="120">
+          </div>
+          <button class="btn btn-gold" onclick="APP.giveApplause()">👏 Applaud</button>
+        </div>
+      </div>
+
+      <!-- My Recognition -->
+      ${myApplause.length > 0 ? `<div class="card" style="border-left:4px solid var(--gold);margin-bottom:1rem">
+        <div class="card-title gold">⭐ You've been recognised ${myApplause.length} time${myApplause.length!==1?'s':''}</div>
+        <div class="text-sm muted mt-1">Keep shining!</div>
+      </div>` : ''}
+
+      <!-- Feed -->
+      <div class="recognition-feed">
+        ${applause.length === 0 ? `<div class="empty-state"><div class="icon">👏</div><h3>Be the first!</h3><p class="muted">Recognise a colleague's great work above.</p></div>` :
+        applause.slice().reverse().map(a => {
+          const from = users.find(x=>x.id===a.from);
+          const to = users.find(x=>x.id===a.to);
+          if (!from || !to) return '';
+          return `<div class="applause-card">
+            <div class="applause-avatars">
+              <div class="mini-avatar">${from.name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div>
+              <div class="applause-arrow">👏</div>
+              <div class="mini-avatar gold-avatar">${to.name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div>
+            </div>
+            <div class="applause-content">
+              <div class="applause-who"><strong>${from.name}</strong> applauded <strong>${to.name}</strong></div>
+              ${a.msg ? `<div class="applause-msg">"${a.msg}"</div>` : ''}
+              <div class="applause-time muted text-xs">${new Date(a.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  },
+
+  giveApplause() {
+    const toId = document.getElementById('applause-to')?.value;
+    const msg  = document.getElementById('applause-msg')?.value?.trim();
+    if (!toId) { this.toast('Please select a colleague', 'error'); return; }
+    const u = this.getUser();
+    const applause = this.storage.get('applause', []) || [];
+    // Limit 3 per day per user
+    const today = new Date().toDateString();
+    const todayCount = applause.filter(a=>a.from===u.id&&new Date(a.date).toDateString()===today).length;
+    if (todayCount >= 3) { this.toast('You can applaud up to 3 times per day', 'error'); return; }
+    applause.push({ from: u.id, to: toId, msg, date: new Date().toISOString() });
+    this.storage.set('applause', applause);
+    this.addXP(u.id, 20, 'Gave Applause');
+    this.checkAndAwardBadges(u);
+    this.toast('Applause sent! +20 XP', 'success');
+    this.navigate('social-wall');
+  },
+
+  // ── RPOS: LIVE STORE SCOREBOARD ──────────────────────────
+  renderLiveStore(el) {
+    const users = this.storage.get('users', []);
+    const u = this.getUser();
+    const isStylist = ['Retail Stylist','Senior Stylist'].includes(u.role);
+    const canSeeAbsolute = !isStylist;
+
+    if (typeof SALES_DATA === 'undefined') {
+      el.innerHTML = `<div class="empty-state"><div class="icon">⚡</div><h3>Sales data not loaded</h3></div>`;
+      return;
+    }
+
+    const sps = SALES_DATA.salespersons.filter(sp => sp.bills >= 5).sort((a,b)=>b.rankSales-a.rankSales||a.rankSales-b.rankSales);
+    const topSP = [...SALES_DATA.salespersons].sort((a,b)=>a.rankSales-b.rankSales)[0];
+    const storeScores = SALES_DATA.stores.slice().sort((a,b)=>(b.sales||0)-(a.sales||0));
+
+    // Group by store for the per-store leaderboard
+    const myStoreSPs = u.storeId ? sps.filter(sp=>sp.store===u.storeId) : sps.slice(0,10);
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>⚡ Live Store Scoreboard</h3><span class="badge-pill badge-green" style="animation:pulse 2s infinite">LIVE</span></div>
+
+      <!-- Today's Champion -->
+      ${topSP ? `<div class="champion-card">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem">🥇</div>
+        <div class="champion-label">Top Performer</div>
+        <div class="champion-name">${topSP.name}</div>
+        <div class="champion-store">${topSP.store}</div>
+        <div class="champion-stats">
+          <span>Rank #1 Overall</span>
+          ${canSeeAbsolute ? `<span>₹${Math.round(topSP.atv).toLocaleString('en-IN')} ATV</span>` : `<span>ATV Rank #${topSP.rankATV}</span>`}
+          <span>${topSP.bills} Bills</span>
+        </div>
+      </div>` : ''}
+
+      <!-- All-Store Leaderboard -->
+      <div class="section-header"><h3>🏆 ${u.storeId ? u.storeId + ' Store' : 'All Stylists'} Ranking</h3></div>
+      <div class="lb-table">
+        <div class="lb-header">
+          <span>Rank</span><span>Name</span><span>ATV</span><span>UPT</span><span>Bills</span>
+        </div>
+        ${myStoreSPs.slice(0,15).map((sp,i) => {
+          const isMe = users.some(x=>(x.salesId||x.id)===sp.id && x.id===u.id);
+          const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          return `<div class="lb-row ${isMe?'me-row':''}">
+            <span class="lb-rank">${medal || '#'+sp.rankSales}</span>
+            <span class="lb-name">${sp.name}</span>
+            <span>${canSeeAbsolute ? '₹'+Math.round(sp.atv).toLocaleString('en-IN') : 'Rank #'+sp.rankATV}</span>
+            <span>${sp.upt.toFixed(1)}</span>
+            <span>${sp.bills}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Store Comparison -->
+      ${canSeeAbsolute && storeScores.length > 0 ? `
+      <div class="section-header mt-2"><h3>🏪 Store Rankings</h3></div>
+      <div class="store-ranking-list">
+        ${storeScores.slice(0,8).map((s,i)=>`<div class="store-rank-row">
+          <span class="lb-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</span>
+          <span>${s.name}</span>
+          <span class="muted text-sm">${s.bills} bills</span>
+          <span class="gold font-bold">₹${Math.round(s.sales/s.bills||0).toLocaleString('en-IN')} ATV</span>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
   },
 
   // ── HELPERS ──────────────────────────────────────────────
