@@ -933,6 +933,70 @@ body {
 .coaching-store { font-size: 0.78rem; color: #888; margin-bottom: 0.75rem; }
 .coaching-action { font-size: 0.82rem; color: #ccc; line-height: 1.5; border-top: 1px solid var(--black4); padding-top: 0.5rem; margin-top: 0.5rem; }
 
+/* ── JC CYCLE TRACKER ───────────────────────────────────── */
+.jc-header-card {
+  background: linear-gradient(135deg, #0d0d0d 0%, #1a1200 100%);
+  border: 1px solid var(--gold3); border-radius: var(--radius2);
+  padding: 1.5rem; margin-bottom: 1.25rem;
+}
+.jc-month-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold3); margin-bottom: 0.75rem; }
+.jc-grand-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.jc-grand-val { font-size: 2rem; font-weight: 900; color: var(--white); line-height: 1; }
+.jc-grand-label { font-size: 0.72rem; color: #888; margin-top: 0.25rem; }
+.jc-grand-bar-wrap { height: 6px; background: var(--black4); border-radius: 3px; overflow: hidden; }
+.jc-grand-bar { height: 100%; background: linear-gradient(90deg, var(--gold3), var(--gold)); border-radius: 3px; transition: width 1s ease; }
+.jc-chart-wrap { padding: 1.25rem; }
+.jc-bar-chart { display: flex; align-items: flex-end; gap: 0.5rem; height: 120px; }
+.jc-bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 0.25rem; }
+.jc-bar-amount { font-size: 0.6rem; color: #888; text-align: center; white-space: nowrap; }
+.jc-bar-body { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--black3); border-radius: 4px 4px 0 0; overflow: hidden; }
+.jc-bar-fill { width: 100%; background: var(--gold3); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.8s ease; }
+.jc-bar-fill.today { background: var(--gold); }
+.jc-bar-label { font-size: 0.62rem; color: #666; text-align: center; white-space: nowrap; }
+.jc-bar-label.today { color: var(--gold); font-weight: 700; }
+.jc-store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.jc-store-card { background: var(--black2); border: 1px solid var(--black4); border-radius: var(--radius); padding: 1.25rem; transition: var(--trans); }
+.jc-store-card:hover { border-color: var(--gold3); }
+.jc-store-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.jc-store-name { font-size: 1rem; font-weight: 700; }
+.jc-store-kp { font-size: 0.75rem; color: var(--gold); margin-top: 0.15rem; }
+.jc-status-pill { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.jc-cycle-active { margin-bottom: 1rem; }
+.jc-cycle-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 0.4rem; }
+.jc-cycle-amounts { display: flex; align-items: baseline; gap: 0.35rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.jc-achieved { font-size: 1.25rem; font-weight: 900; color: var(--white); }
+.jc-separator { color: #555; }
+.jc-target { font-size: 0.85rem; color: #888; }
+.jc-pct { font-size: 1rem; font-weight: 700; margin-left: auto; }
+.jc-prog-bar { height: 6px; background: var(--black4); border-radius: 3px; overflow: hidden; margin-bottom: 0.4rem; }
+.jc-prog-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.jc-req-day { font-size: 0.72rem; margin-top: 0.25rem; }
+.jc-cycles-mini { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--black4); }
+.jc-mini-cycle { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; flex: 1; }
+.jc-mini-cycle.active .jc-mini-label { color: var(--gold); font-weight: 700; }
+.jc-mini-label { font-size: 0.62rem; color: #666; text-transform: uppercase; }
+.jc-mini-ring { position: relative; width: 40px; height: 40px; }
+.jc-mini-ring svg { width: 40px; height: 40px; }
+.jc-mini-pct { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 0.58rem; font-weight: 700; color: var(--white); }
+.jc-mini-amt { font-size: 0.62rem; color: #888; }
+.jc-incentive-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--black4); }
+.jc-daily-table td, .jc-daily-table th { padding: 0.5rem 0.6rem; font-size: 0.8rem; }
+.jc-daily-table tr.today-row td { background: rgba(201,168,76,0.06); }
+.jc-daily-table tr.today-row td:first-child { color: var(--gold); font-weight: 700; }
+
+/* ── DATA UPLOAD PAGE ───────────────────────────────────── */
+.upload-guide-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.upload-format-card { margin-bottom: 1rem; }
+.upload-format-preview { background: var(--black3); border: 1px solid var(--black4); border-radius: var(--radius); padding: 0.75rem 1rem; font-family: 'Consolas', monospace; font-size: 0.78rem; color: #9cdcfe; line-height: 1.7; margin-top: 0.5rem; white-space: pre; overflow-x: auto; }
+.upload-drop-zone { border: 2px dashed var(--black4); background: var(--black2); border-radius: var(--radius); padding: 2.5rem; text-align: center; cursor: pointer; transition: var(--trans); margin-bottom: 1rem; }
+.upload-drop-zone:hover, .upload-drop-zone.dragging { border-color: var(--gold3); background: rgba(201,168,76,0.05); }
+.upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.upload-text { font-size: 1rem; font-weight: 600; margin-bottom: 0.35rem; }
+.manual-entry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+.manual-entry-row { display: flex; align-items: center; gap: 0.75rem; background: var(--black3); border-radius: var(--radius); padding: 0.65rem 0.9rem; }
+.manual-store-label { font-size: 0.82rem; font-weight: 600; min-width: 100px; flex: 1; line-height: 1.3; }
+.manual-amount { width: 110px; flex-shrink: 0; }
+
 /* ── RPOS: PULSE ANIMATION ──────────────────────────────── */
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.05)} }
 .badge-pill.badge-green[style*="animation"] { display: inline-block; }

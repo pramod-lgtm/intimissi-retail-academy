@@ -318,6 +318,7 @@ const APP = {
     const managerNav = isManager || isAdmin ? `
       <div class="nav-section">
         <div class="nav-section-title">Management</div>
+        <div class="nav-item" onclick="APP.navigate('jc-performance')"><span class="icon">🎯</span><span>JC Cycle Tracker</span></div>
         <div class="nav-item" onclick="APP.navigate('manager-dashboard')"><span class="icon">📊</span><span>Team Dashboard</span></div>
         <div class="nav-item" onclick="APP.navigate('store-analytics')"><span class="icon">🏪</span><span>Store Analytics</span></div>
       </div>` : '';
@@ -327,6 +328,7 @@ const APP = {
         <div class="nav-section-title">Administration</div>
         <div class="nav-item" onclick="APP.navigate('admin')"><span class="icon">⚙️</span><span>Admin Panel</span></div>
         <div class="nav-item" onclick="APP.navigate('manage-users')"><span class="icon">👥</span><span>Manage Users</span></div>
+        <div class="nav-item" onclick="APP.navigate('data-upload')"><span class="icon">📤</span><span>Upload Sales Data</span></div>
         <div class="nav-item" onclick="APP.navigate('reports')"><span class="icon">📋</span><span>Reports</span></div>
       </div>` : '';
 
@@ -372,6 +374,8 @@ const APP = {
           case 'leaderboard':     topTitle.textContent = '🏆 Leaderboard';           this.renderLeaderboard(content); break;
           case 'my-certs':        topTitle.textContent = '🎓 My Certificates';       this.renderMyCerts(content); break;
           case 'ai-coach':        topTitle.textContent = '🤖 AI Retail Coach';       this.renderAICoach(content); break;
+          case 'jc-performance':   topTitle.textContent = '🎯 JC Cycle Tracker';      this.renderJCPerformance(content); break;
+          case 'data-upload':      topTitle.textContent = '📤 Upload Sales Data';     this.renderDataUpload(content); break;
           case 'manager-dashboard':topTitle.textContent='📊 Team Dashboard';         this.renderManagerDashboard(content); break;
           case 'store-analytics': topTitle.textContent = '🏪 Store Analytics';       this.renderStoreAnalytics(content); break;
           case 'admin':           topTitle.textContent = '⚙️ Admin Panel';           this.renderAdmin(content); break;
@@ -1473,6 +1477,526 @@ const APP = {
     // Default rich response
     const suggestions = Object.keys(kb).slice(0, 3);
     return `Great question! For "${q}", let me share what I know:\n\nHere are relevant topics I can help with: ${suggestions.join(', ')}. Please ask more specifically — for example: "How do I recommend a bra for someone with back pain?" or "What's the Triumph brand story?" I'm trained on all 10 brands, 6 categories, and Intimissi's selling methodology. 💡`;
+  },
+
+  // ── JC CYCLE PERFORMANCE ─────────────────────────────────
+  renderJCPerformance(el) {
+    if (typeof JC_DATA === 'undefined') {
+      el.innerHTML = '<div class="empty-state"><div class="icon">📊</div><h3>JC Data not loaded</h3></div>';
+      return;
+    }
+    const u = this.state.user;
+    const isAdmin = ['Super Admin','HR','Operations Head','Area Manager'].includes(u.role);
+    const today = new Date().toISOString().slice(0,10);
+    const currentCycle = JC_DATA.getCurrentCycle(today);
+    const daily = JC_DATA.getLiveDaily();
+
+    // For non-admin: show only their store
+    const stores = isAdmin
+      ? JC_DATA.stores
+      : JC_DATA.stores.filter(s => s.keyPersons.some(kp => kp.name.toLowerCase() === u.name.split(' ')[0].toLowerCase()) || s.userCode.toLowerCase() === (u.username || '').toLowerCase());
+    const displayStores = stores.length > 0 ? stores : JC_DATA.stores;
+
+    // Grand total row
+    const grandAchieved = JC_DATA.stores.reduce((sum, s) => {
+      const liveS = JC_DATA.getLiveStore(s.id);
+      return sum + liveS.cycles.reduce((a, c) => a + c.achieved, 0);
+    }, 0);
+    const grandPct = JC_DATA.totalTarget > 0 ? grandAchieved / JC_DATA.totalTarget : 0;
+
+    // Daily chart for the last 7 days
+    const last7 = daily.slice(-7);
+    const storeIds = JC_DATA.stores.map(s => s.id);
+    const dailyTotals = last7.map(d => ({ date: d.date, total: storeIds.reduce((s, id) => s + (d[id] || 0), 0) }));
+    const maxDaily = Math.max(...dailyTotals.map(d => d.total), 1);
+
+    el.innerHTML = `<div class="fade-in">
+      <!-- HEADER SUMMARY -->
+      <div class="jc-header-card">
+        <div class="jc-month-label">${JC_DATA.month} · JC Cycle ${currentCycle} Active</div>
+        <div class="jc-grand-row">
+          <div>
+            <div class="jc-grand-val">₹${Math.round(grandAchieved/1000)}K</div>
+            <div class="jc-grand-label">Total Achieved (MTD)</div>
+          </div>
+          <div>
+            <div class="jc-grand-val" style="color:${grandPct>=1?'#4caf50':grandPct>=0.5?'var(--gold)':'#ef5350'}">${Math.round(grandPct*100)}%</div>
+            <div class="jc-grand-label">of ₹${Math.round(JC_DATA.totalTarget/100000)}L Month Target</div>
+          </div>
+          <div>
+            <div class="jc-grand-val">Cycle ${currentCycle}</div>
+            <div class="jc-grand-label">Current Period</div>
+          </div>
+        </div>
+        <div class="jc-grand-bar-wrap">
+          <div class="jc-grand-bar" style="width:${Math.min(100,Math.round(grandPct*100))}%"></div>
+        </div>
+      </div>
+
+      <!-- DAILY TREND CHART -->
+      <div class="section-header"><h3>📈 Daily Sales Trend</h3><span class="muted text-xs">Last ${last7.length} days · All Stores</span></div>
+      <div class="card jc-chart-wrap">
+        <div class="jc-bar-chart">
+          ${dailyTotals.map(d => {
+            const pct = Math.round(d.total / maxDaily * 100);
+            const dt = new Date(d.date + 'T00:00:00');
+            const label = dt.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+            const isToday = d.date === today;
+            return `<div class="jc-bar-col">
+              <div class="jc-bar-amount">₹${Math.round(d.total/1000)}K</div>
+              <div class="jc-bar-body"><div class="jc-bar-fill ${isToday?'today':''}" style="height:${pct}%"></div></div>
+              <div class="jc-bar-label ${isToday?'today':''}">${label}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- STORE-WISE JC CYCLE CARDS -->
+      <div class="section-header"><h3>🏪 Store Performance by JC Cycle</h3>
+        <button class="btn btn-outline btn-sm" onclick="APP.navigate('data-upload')">📤 Update Data</button>
+      </div>
+      <div class="jc-store-grid">
+        ${displayStores.map(s => {
+          const liveS = JC_DATA.getLiveStore(s.id);
+          const totalAchieved = liveS.cycles.reduce((a, c) => a + c.achieved, 0);
+          const monthPct = liveS.monthTarget > 0 ? totalAchieved / liveS.monthTarget : 0;
+          const activeCycle = liveS.cycles[currentCycle - 1];
+          const activePct = activeCycle.target > 0 ? activeCycle.achieved / activeCycle.target : 0;
+          const todayAmt = daily.find(d => d.date === today)?.[s.id] || 0;
+          const reqPerDay = this.jcRequiredPerDay(activeCycle, today);
+          const statusColor = activePct >= 1 ? '#4caf50' : activePct >= 0.75 ? '#ffd700' : activePct >= 0.5 ? '#ff9800' : '#ef5350';
+          const statusLabel = activePct >= 1 ? '✅ On Target' : activePct >= 0.75 ? '📈 Good' : activePct >= 0.5 ? '⚡ Push Now' : '🚨 Behind';
+
+          return `<div class="jc-store-card">
+            <div class="jc-store-header">
+              <div>
+                <div class="jc-store-name">${s.shortName}</div>
+                <div class="jc-store-kp">${s.keyPersons.map(kp=>kp.name).join(' & ')}</div>
+              </div>
+              <div class="jc-status-pill" style="background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40">${statusLabel}</div>
+            </div>
+
+            <!-- Active Cycle Progress -->
+            <div class="jc-cycle-active">
+              <div class="jc-cycle-label">Cycle ${currentCycle} · ${activeCycle.label}</div>
+              <div class="jc-cycle-amounts">
+                <span class="jc-achieved">₹${Math.round(activeCycle.achieved/1000)}K</span>
+                <span class="jc-separator"> / </span>
+                <span class="jc-target">₹${Math.round(activeCycle.target/1000)}K</span>
+                <span class="jc-pct" style="color:${statusColor}">${Math.round(activePct*100)}%</span>
+              </div>
+              <div class="jc-prog-bar"><div class="jc-prog-fill" style="width:${Math.min(100,Math.round(activePct*100))}%;background:${statusColor}"></div></div>
+              ${reqPerDay > 0 ? `<div class="jc-req-day muted text-xs">Need ₹${Math.round(reqPerDay/1000)}K/day to hit cycle target</div>` : '<div class="jc-req-day" style="color:#4caf50">Cycle target achieved! 🎉</div>'}
+            </div>
+
+            <!-- All 3 Cycles Mini -->
+            <div class="jc-cycles-mini">
+              ${liveS.cycles.map(c => {
+                const p = c.target > 0 ? Math.min(1, c.achieved / c.target) : 0;
+                const col = p >= 1 ? '#4caf50' : p >= 0.5 ? 'var(--gold)' : '#666';
+                const active = c.n === currentCycle;
+                return `<div class="jc-mini-cycle ${active?'active':''}">
+                  <div class="jc-mini-label">C${c.n}</div>
+                  <div class="jc-mini-ring" style="--p:${Math.round(p*100)};--col:${col}">
+                    <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="#333" stroke-width="3"/>
+                    <circle cx="16" cy="16" r="12" fill="none" stroke="${col}" stroke-width="3"
+                      stroke-dasharray="${Math.round(p*75.4)} 75.4" stroke-linecap="round" transform="rotate(-90 16 16)"/>
+                    </svg>
+                    <div class="jc-mini-pct">${Math.round(p*100)}%</div>
+                  </div>
+                  <div class="jc-mini-amt">₹${Math.round(c.achieved/1000)}K</div>
+                </div>`;
+              }).join('')}
+              <div class="jc-mini-cycle">
+                <div class="jc-mini-label">MTD</div>
+                <div class="jc-mini-ring">
+                  <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="#333" stroke-width="3"/>
+                  <circle cx="16" cy="16" r="12" fill="none" stroke="${monthPct>=1?'#4caf50':monthPct>=0.5?'var(--gold)':'#ef5350'}" stroke-width="3"
+                    stroke-dasharray="${Math.round(Math.min(1,monthPct)*75.4)} 75.4" stroke-linecap="round" transform="rotate(-90 16 16)"/>
+                  </svg>
+                  <div class="jc-mini-pct">${Math.round(monthPct*100)}%</div>
+                </div>
+                <div class="jc-mini-amt" style="color:var(--gold)">Month</div>
+              </div>
+            </div>
+
+            <!-- Incentive row (managers only) -->
+            ${isAdmin ? `<div class="jc-incentive-row">
+              <span class="text-xs muted">Incentive @ 100%: <strong>₹${s.incentive.toLocaleString('en-IN')}</strong></span>
+              ${s.keyPersons.length > 1 ? `<span class="text-xs muted">(${s.keyPersons.map(kp=>kp.name+' '+kp.split+'%').join(' / ')})</span>` : ''}
+              <span class="text-xs" style="color:${monthPct>=1?'#4caf50':'#888'}">${monthPct>=1?'✅ Earned!':'~₹'+Math.round(s.incentive*monthPct).toLocaleString('en-IN')+' projected'}</span>
+            </div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- DAILY TABLE -->
+      <div class="section-header mt-2"><h3>📅 Day-wise Sales Log</h3></div>
+      <div class="card" style="overflow-x:auto">
+        <table class="data-table jc-daily-table">
+          <thead><tr><th>Date</th>${displayStores.map(s=>`<th>${s.shortName}</th>`).join('')}<th>Total</th></tr></thead>
+          <tbody>
+            ${daily.slice().reverse().filter(d => d.date >= JC_DATA.monthCode + '-01').map(d => {
+              const rowTotal = displayStores.reduce((sum, s) => sum + (d[s.id]||0), 0);
+              const isToday = d.date === today;
+              return `<tr class="${isToday?'today-row':''}">
+                <td class="text-sm">${new Date(d.date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</td>
+                ${displayStores.map(s => {
+                  const amt = d[s.id] || 0;
+                  return `<td class="${amt===0?'muted text-sm':''}">${amt>0?'₹'+amt.toLocaleString('en-IN'):'—'}</td>`;
+                }).join('')}
+                <td class="font-bold" style="color:var(--gold)">₹${rowTotal.toLocaleString('en-IN')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  },
+
+  // Calculate required daily amount to hit cycle target
+  jcRequiredPerDay(cycle, today) {
+    const endDate = new Date(cycle.end + 'T00:00:00');
+    const todayDate = new Date(today + 'T00:00:00');
+    const daysLeft = Math.max(0, Math.ceil((endDate - todayDate) / 86400000) + 1);
+    const remaining = cycle.target - cycle.achieved;
+    if (remaining <= 0) return 0;
+    return daysLeft > 0 ? remaining / daysLeft : remaining;
+  },
+
+  // ── DATA UPLOAD PAGE ──────────────────────────────────────
+  renderDataUpload(el) {
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header">
+        <h3>📤 Upload Sales Data</h3>
+        <span class="muted text-xs">Upload daily store data or bill-level export from Tally</span>
+      </div>
+
+      <!-- Format Guide -->
+      <div class="upload-guide-tabs">
+        <button class="tab-btn active" onclick="APP.switchUploadTab('daily',this)">📊 Daily Store Summary</button>
+        <button class="tab-btn" onclick="APP.switchUploadTab('bills',this)">🧾 Bill Detail (Tally Export)</button>
+      </div>
+
+      <div id="upload-tab-daily">
+        <div class="card upload-format-card">
+          <div class="card-title">Expected CSV Format — Daily Store Summary</div>
+          <div class="upload-format-preview">Date,Store,Amount
+2026-07-08,001 Mahagun,24500
+2026-07-08,002 Burari,8200
+2026-07-08,004 Kamla Nagar,31000
+2026-07-08,006 V3s,19800
+2026-07-08,007 Rohini,28400
+2026-07-08,008 Elan Epic,5100
+2026-07-08,009 Pacific Av,12300
+2026-07-08,010 Mukherjee Nagar,9700</div>
+          <div class="text-xs muted mt-1">Store names must match exactly: 001 Mahagun · 002 Burari · 004 Kamla Nagar · 006 V3s · 007 Rohini · 008 Elan Epic · 009 Pacific Av · 010 Mukherjee Nagar</div>
+        </div>
+      </div>
+
+      <div id="upload-tab-bills" class="hidden">
+        <div class="card upload-format-card">
+          <div class="card-title">Expected CSV Format — Tally Bill Export</div>
+          <div class="upload-format-preview">Date,Vch Number,Customer,Bill Ref,Qty,Total Amount,Location,User
+2026-07-08,2627/Mn/S/800,Priya,2627/Mn/S/26/800,3,2499,001 Mahagun,Mgsales
+2026-07-08,2627/Roh/S/1220,Sneha,,2,1299,007 Rohini,Rohinisales</div>
+          <div class="text-xs muted mt-1">Matches the Tally pivot export format. Location column is used to identify the store.</div>
+        </div>
+      </div>
+
+      <!-- Upload Area -->
+      <div class="card upload-drop-zone" id="upload-drop-zone">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text">Drop your CSV file here or click to browse</div>
+        <div class="muted text-xs">Supports .csv files · Max 5MB</div>
+        <input type="file" id="upload-file-input" accept=".csv,.txt" style="display:none" onchange="APP.handleFileUpload(this)">
+        <button class="btn btn-gold mt-2" onclick="document.getElementById('upload-file-input').click()">Choose File</button>
+      </div>
+
+      <!-- Preview Area (hidden until file loaded) -->
+      <div id="upload-preview" class="hidden">
+        <div class="section-header"><h3>📋 Preview — Parsed Data</h3><span id="upload-row-count" class="muted text-xs"></span></div>
+        <div class="card" style="overflow-x:auto;max-height:400px;overflow-y:auto">
+          <div id="upload-table-wrap"></div>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="APP.confirmUpload()">✅ Confirm & Update Dashboard</button>
+          <button class="btn btn-outline" onclick="APP.clearUpload()">✕ Cancel</button>
+        </div>
+      </div>
+
+      <!-- Success message -->
+      <div id="upload-success" class="hidden">
+        <div class="card" style="border-left:4px solid #4caf50;margin-top:1rem">
+          <div class="font-bold" style="color:#4caf50">✅ Data uploaded successfully!</div>
+          <div class="text-sm muted mt-1" id="upload-success-msg"></div>
+          <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn btn-gold" onclick="APP.navigate('jc-performance')">View JC Tracker →</button>
+            <button class="btn btn-outline" onclick="APP.navigate('live-store')">Live Scoreboard →</button>
+            <button class="btn btn-ghost" onclick="APP.clearUpload()">Upload More</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Data Status -->
+      <div class="section-header mt-2"><h3>📊 Current Data Status</h3></div>
+      <div class="kpi-grid">
+        <div class="card"><div class="card-title">Data Last Updated</div><div class="card-value text-lg">${JC_DATA.updatedAt}</div><div class="card-sub">Seeded from Excel upload</div></div>
+        <div class="card"><div class="card-title">Days With Data</div><div class="card-value">${JC_DATA.getLiveDaily().filter(d=>Object.values(d).slice(1).some(v=>v>0)).length}</div><div class="card-sub">of ${new Date().getDate()} days this month</div></div>
+        <div class="card"><div class="card-title">Total Recorded</div><div class="card-value gold">₹${Math.round(JC_DATA.getLiveDaily().reduce((s,d)=>s+JC_DATA.stores.reduce((ss,st)=>ss+(d[st.id]||0),0),0)/1000)}K</div><div class="card-sub">Sales MTD</div></div>
+      </div>
+
+      <!-- Quick Manual Entry -->
+      <div class="section-header mt-2"><h3>✏️ Quick Daily Entry</h3><span class="muted text-xs">Add today's numbers manually</span></div>
+      <div class="card">
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+          <div>
+            <label class="text-xs muted">Date</label>
+            <input type="date" id="manual-date" class="input-text" style="margin-top:0.25rem" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+        </div>
+        <div class="manual-entry-grid">
+          ${JC_DATA.stores.map(s => `<div class="manual-entry-row">
+            <label class="manual-store-label">${s.shortName}<br><span class="text-xs muted">${s.keyPersons.map(kp=>kp.name).join(' & ')}</span></label>
+            <input type="number" id="manual-${s.id}" class="input-text manual-amount" placeholder="₹ Amount" min="0">
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-gold mt-2" onclick="APP.saveManualEntry()" style="width:100%">💾 Save Daily Entry</button>
+      </div>
+    </div>`;
+
+    // Drop zone drag events
+    const dz = document.getElementById('upload-drop-zone');
+    if (dz) {
+      dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragging'); });
+      dz.addEventListener('dragleave', () => dz.classList.remove('dragging'));
+      dz.addEventListener('drop', e => {
+        e.preventDefault(); dz.classList.remove('dragging');
+        const f = e.dataTransfer.files[0];
+        if (f) this.processUploadedFile(f);
+      });
+    }
+  },
+
+  switchUploadTab(tab, btn) {
+    document.querySelectorAll('.upload-guide-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['daily','bills'].forEach(t => {
+      const el = document.getElementById('upload-tab-' + t);
+      if (el) el.classList.toggle('hidden', t !== tab);
+    });
+  },
+
+  handleFileUpload(input) {
+    const f = input.files[0];
+    if (f) this.processUploadedFile(f);
+  },
+
+  processUploadedFile(file) {
+    if (!file.name.match(/\.(csv|txt)$/i)) { this.toast('Please upload a .csv file', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const parsed = this.parseCSV(text);
+        this.showUploadPreview(parsed, text);
+      } catch(err) {
+        this.toast('Error reading file: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  },
+
+  parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) throw new Error('File must have a header row and at least one data row');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cells = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      if (cells.length < 2) continue;
+      const row = {};
+      headers.forEach((h, idx) => { row[h] = cells[idx] || ''; });
+      rows.push(row);
+    }
+    return { headers, rows, format: this.detectCSVFormat(headers) };
+  },
+
+  detectCSVFormat(headers) {
+    const h = headers.map(x => x.toLowerCase());
+    if (h.includes('location') || h.includes('user') || h.includes('vch number')) return 'bills';
+    if (h.includes('store') && h.includes('amount')) return 'daily';
+    if (h.includes('date') && h.length <= 4) return 'daily';
+    return 'unknown';
+  },
+
+  showUploadPreview(parsed, rawText) {
+    const preview = document.getElementById('upload-preview');
+    const wrap = document.getElementById('upload-table-wrap');
+    const countEl = document.getElementById('upload-row-count');
+    if (!preview || !wrap) return;
+
+    // Store parsed data for confirm step
+    this._pendingUpload = parsed;
+
+    const maxPreviewRows = 20;
+    const rows = parsed.rows.slice(0, maxPreviewRows);
+
+    wrap.innerHTML = `<table class="data-table">
+      <thead><tr>${parsed.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${parsed.headers.map(h=>`<td class="text-sm">${r[h]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>${parsed.rows.length > maxPreviewRows ? `<div class="muted text-xs p-2">Showing first ${maxPreviewRows} of ${parsed.rows.length} rows</div>` : ''}`;
+
+    if (countEl) countEl.textContent = `${parsed.rows.length} rows · Format: ${parsed.format}`;
+    preview.classList.remove('hidden');
+    preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  confirmUpload() {
+    const parsed = this._pendingUpload;
+    if (!parsed) return;
+
+    let updatedDays = 0, updatedStores = 0;
+
+    if (parsed.format === 'daily') {
+      // Format: Date, Store, Amount
+      const dailyMap = {};
+      parsed.rows.forEach(r => {
+        const date = (r['Date'] || r['date'] || '').trim().slice(0,10);
+        let store = (r['Store'] || r['store'] || r['Location'] || '').trim();
+        const amount = parseInt((r['Amount'] || r['amount'] || '0').replace(/[^0-9]/g,'')) || 0;
+        if (!date || !store) return;
+        // Match store to JC_DATA store ID
+        const matchedStore = JC_DATA.stores.find(s => s.name.toLowerCase() === store.toLowerCase() || s.shortName.toLowerCase() === store.toLowerCase() || s.id === store.slice(0,3));
+        if (!matchedStore) return;
+        if (!dailyMap[date]) dailyMap[date] = {};
+        dailyMap[date][matchedStore.id] = (dailyMap[date][matchedStore.id] || 0) + amount;
+        updatedStores++;
+      });
+      // Merge into existing daily data
+      const existing = JC_DATA.getLiveDaily();
+      const existingMap = {};
+      existing.forEach(d => { existingMap[d.date] = { ...d }; });
+      Object.keys(dailyMap).forEach(date => {
+        if (!existingMap[date]) existingMap[date] = { date };
+        Object.assign(existingMap[date], dailyMap[date]);
+        updatedDays++;
+      });
+      const newDaily = Object.values(existingMap).sort((a,b) => a.date.localeCompare(b.date));
+      localStorage.setItem('jc_daily_' + JC_DATA.monthCode, JSON.stringify(newDaily));
+
+      // Recalculate cycle achievements
+      this.recalcJCCycles(newDaily);
+
+    } else if (parsed.format === 'bills') {
+      // Format: Date, Vch Number, Customer, Bill Ref, Qty, Total Amount, Location, User
+      const dailyMap = {};
+      parsed.rows.forEach(r => {
+        const date = (r['Date'] || r['date'] || '').trim().slice(0,10);
+        const store = (r['Location'] || r['location'] || '').trim();
+        const amount = parseInt((r['Total Amount'] || r['Amount'] || '0').replace(/[^0-9]/g,'')) || 0;
+        if (!date || !store || amount <= 0) return;
+        const matchedStore = JC_DATA.stores.find(s => s.name.toLowerCase() === store.toLowerCase() || store.startsWith(s.id));
+        if (!matchedStore) return;
+        if (!dailyMap[date]) dailyMap[date] = {};
+        dailyMap[date][matchedStore.id] = (dailyMap[date][matchedStore.id] || 0) + amount;
+        updatedStores++;
+      });
+      const existing = JC_DATA.getLiveDaily();
+      const existingMap = {};
+      existing.forEach(d => { existingMap[d.date] = { ...d }; });
+      Object.keys(dailyMap).forEach(date => {
+        if (!existingMap[date]) existingMap[date] = { date };
+        Object.assign(existingMap[date], dailyMap[date]);
+        updatedDays++;
+      });
+      const newDaily = Object.values(existingMap).sort((a,b) => a.date.localeCompare(b.date));
+      localStorage.setItem('jc_daily_' + JC_DATA.monthCode, JSON.stringify(newDaily));
+      this.recalcJCCycles(newDaily);
+    }
+
+    this._pendingUpload = null;
+    const success = document.getElementById('upload-success');
+    const msg = document.getElementById('upload-success-msg');
+    const preview = document.getElementById('upload-preview');
+    if (preview) preview.classList.add('hidden');
+    if (success) success.classList.remove('hidden');
+    if (msg) msg.textContent = `Updated ${updatedDays} day${updatedDays!==1?'s':''} · ${updatedStores} store-day records processed`;
+    this.toast('Sales data updated! Dashboard refreshed.', 'success');
+    this.checkJCBadges();
+  },
+
+  recalcJCCycles(dailyData) {
+    const cycleAchieved = {};
+    JC_DATA.stores.forEach(s => { cycleAchieved[s.id] = [0, 0, 0]; });
+    dailyData.forEach(d => {
+      const dayNum = parseInt(d.date.slice(8,10));
+      const cycleIdx = dayNum <= 10 ? 0 : dayNum <= 20 ? 1 : 2;
+      JC_DATA.stores.forEach(s => {
+        cycleAchieved[s.id][cycleIdx] += (d[s.id] || 0);
+      });
+    });
+    localStorage.setItem('jc_cycles_' + JC_DATA.monthCode, JSON.stringify(cycleAchieved));
+  },
+
+  saveManualEntry() {
+    const date = document.getElementById('manual-date')?.value;
+    if (!date) { this.toast('Please select a date', 'error'); return; }
+    const entry = { date };
+    let hasData = false;
+    JC_DATA.stores.forEach(s => {
+      const val = parseInt(document.getElementById('manual-' + s.id)?.value || '0') || 0;
+      entry[s.id] = val;
+      if (val > 0) hasData = true;
+    });
+    if (!hasData) { this.toast('Please enter at least one store amount', 'error'); return; }
+
+    const existing = JC_DATA.getLiveDaily();
+    const idx = existing.findIndex(d => d.date === date);
+    if (idx >= 0) Object.assign(existing[idx], entry);
+    else existing.push(entry);
+    existing.sort((a,b) => a.date.localeCompare(b.date));
+    localStorage.setItem('jc_daily_' + JC_DATA.monthCode, JSON.stringify(existing));
+    this.recalcJCCycles(existing);
+    this.toast('Daily entry saved! ✅', 'success');
+    this.navigate('jc-performance');
+  },
+
+  clearUpload() {
+    this._pendingUpload = null;
+    const preview = document.getElementById('upload-preview');
+    const success = document.getElementById('upload-success');
+    const fileInput = document.getElementById('upload-file-input');
+    if (preview) preview.classList.add('hidden');
+    if (success) success.classList.add('hidden');
+    if (fileInput) fileInput.value = '';
+  },
+
+  checkJCBadges() {
+    const u = this.getUser();
+    const storeId = JC_DATA.stores.find(s => s.userCode.toLowerCase() === (u.username||'').toLowerCase() || s.keyPersons.some(kp => kp.name.toLowerCase() === u.name.split(' ')[0].toLowerCase()))?.id;
+    if (!storeId) return;
+    const liveS = JC_DATA.getLiveStore(storeId);
+    const earnedIds = [];
+    liveS.cycles.forEach(c => {
+      const p = c.target > 0 ? c.achieved / c.target : 0;
+      if (p >= 0.5)  earnedIds.push('jc1_50');
+      if (p >= 0.75) earnedIds.push('jc1_75');
+      if (p >= 1.0)  earnedIds.push('jc1_100');
+    });
+    const allHit = liveS.cycles.every(c => c.target > 0 && c.achieved >= c.target);
+    if (allHit) earnedIds.push('jc_3x');
+    const monthPct = liveS.monthTarget > 0 ? liveS.cycles.reduce((a,c)=>a+c.achieved,0)/liveS.monthTarget : 0;
+    if (monthPct >= 1) earnedIds.push('incentive_win');
+    const prev = this.storage.get('earned_jc_badges_' + u.id) || [];
+    const prevSet = new Set(prev);
+    earnedIds.forEach(id => {
+      if (!prevSet.has(id)) {
+        const badge = IRA_DATA.badges.find(b => b.id === id);
+        if (badge) this.toast(`${badge.icon} JC Badge: ${badge.name}!`, 'success');
+      }
+    });
+    this.storage.set('earned_jc_badges_' + u.id, [...new Set([...prev, ...earnedIds])]);
   },
 
   // ── MANAGER DASHBOARD ────────────────────────────────────

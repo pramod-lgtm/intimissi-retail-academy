@@ -57,7 +57,16 @@ const IRA_DATA = {
     // Special
     { id:'early_bird',   name:'Early Bird',         icon:'🌅', desc:'Logged in before 9am',            tier:'bronze',   category:'special' },
     { id:'night_owl',    name:'Night Owl',           icon:'🦉', desc:'Logged in after 8pm',             tier:'bronze',   category:'special' },
-    { id:'weekend_grind',name:'Weekend Warrior',    icon:'🗓️', desc:'Trained on a weekend',            tier:'silver',   category:'special' }
+    { id:'weekend_grind',name:'Weekend Warrior',    icon:'🗓️', desc:'Trained on a weekend',            tier:'silver',   category:'special' },
+    // JC Cycle Badges
+    { id:'jc1_50',       name:'Cycle Starter',      icon:'🚀', desc:'Achieved 50%+ in any JC Cycle',   tier:'bronze',   category:'jc' },
+    { id:'jc1_75',       name:'Cycle Fighter',      icon:'💪', desc:'Achieved 75%+ in any JC Cycle',   tier:'silver',   category:'jc' },
+    { id:'jc1_100',      name:'Cycle Conqueror',    icon:'🏆', desc:'Hit 100% in a JC Cycle',          tier:'gold',     category:'jc' },
+    { id:'jc_3x',        name:'Triple Crown',       icon:'👑', desc:'Hit 100% in all 3 JC Cycles',     tier:'diamond',  category:'jc' },
+    { id:'daily_hero',   name:'Daily Hero',         icon:'⭐', desc:'Best store sales on any day',     tier:'gold',     category:'jc' },
+    { id:'jc_best_day',  name:'Century Day',        icon:'💯', desc:'Store hits single-day best',      tier:'silver',   category:'jc' },
+    { id:'jc_comeback',  name:'Comeback Queen',     icon:'🔄', desc:'Recovered from <40% to >80%',    tier:'gold',     category:'jc' },
+    { id:'incentive_win',name:'Incentive Champ',    icon:'💰', desc:'Earned full incentive this month',tier:'platinum', category:'jc' }
   ],
 
   // ── MISSION TEMPLATES ─────────────────────────────────────
