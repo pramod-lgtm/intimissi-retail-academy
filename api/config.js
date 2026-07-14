@@ -101,6 +101,10 @@ module.exports = async function handler(req, res) {
     // Merge patch
     if (patch.video_urls) Object.assign(currentConfig.video_urls, patch.video_urls);
     if (patch.pin_overrides) Object.assign(currentConfig.pin_overrides, patch.pin_overrides);
+    if (patch.jc_data) {
+      if (!currentConfig.jc_data) currentConfig.jc_data = {};
+      Object.assign(currentConfig.jc_data, patch.jc_data); // keyed by month, last upload wins
+    }
 
     // Commit with retry on 409 conflict (SHA changed between read and write)
     let committed = false;
@@ -116,6 +120,10 @@ module.exports = async function handler(req, res) {
             if (!freshCfg.pin_overrides) freshCfg.pin_overrides = {};
             if (patch.video_urls) Object.assign(freshCfg.video_urls, patch.video_urls);
             if (patch.pin_overrides) Object.assign(freshCfg.pin_overrides, patch.pin_overrides);
+            if (patch.jc_data) {
+              if (!freshCfg.jc_data) freshCfg.jc_data = {};
+              Object.assign(freshCfg.jc_data, patch.jc_data);
+            }
             currentConfig = freshCfg;
           }
         } catch(e) {}

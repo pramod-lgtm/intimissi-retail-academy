@@ -15,7 +15,7 @@ const JC_DATA = {
     {
       id: '001', code: 'Mn', name: '001 Mahagun',
       shortName: 'Mahagun',
-      keyPersons: [{ name: 'Aradhya', split: 100 }],
+      keyPersons: [{ name: 'Aradhya', user: 'aradhya', split: 100 }],
       monthTarget: 650000, incentive: 3250,
       userCode: 'Mgsales',
       cycles: [
@@ -27,7 +27,7 @@ const JC_DATA = {
     {
       id: '002', code: 'Br', name: '002 Burari',
       shortName: 'Burari',
-      keyPersons: [{ name: 'Khushi', split: 100 }],
+      keyPersons: [{ name: 'Khushi', user: 'khushi', split: 100 }],
       monthTarget: 480000, incentive: 2400,
       userCode: 'Burarisales',
       cycles: [
@@ -39,7 +39,7 @@ const JC_DATA = {
     {
       id: '004', code: 'Kn', name: '004 Kamla Nagar',
       shortName: 'Kamla Nagar',
-      keyPersons: [{ name: 'Sonali', split: 50 }, { name: 'Shalu', split: 50 }],
+      keyPersons: [{ name: 'Sonali', user: 'sonali', split: 50 }, { name: 'Shalu', user: 'shaalu', split: 50 }],
       monthTarget: 920000, incentive: 4600,
       userCode: 'Knsales',
       cycles: [
@@ -51,7 +51,7 @@ const JC_DATA = {
     {
       id: '006', code: 'V3s', name: '006 V3s',
       shortName: 'V3s',
-      keyPersons: [{ name: 'Pinki', split: 100 }],
+      keyPersons: [{ name: 'Pinki', user: 'pinki', split: 100 }],
       monthTarget: 620000, incentive: 3100,
       userCode: 'V3ssales',
       cycles: [
@@ -63,7 +63,7 @@ const JC_DATA = {
     {
       id: '007', code: 'Roh', name: '007 Rohini',
       shortName: 'Rohini',
-      keyPersons: [{ name: 'Preeti', split: 67 }, { name: 'Priyanka', split: 33 }],
+      keyPersons: [{ name: 'Preeti', user: 'preeti.roh', split: 67 }, { name: 'Priyanka', user: 'priyanka', split: 33 }],
       monthTarget: 820000, incentive: 4100,
       userCode: 'Rohinisales',
       cycles: [
@@ -75,7 +75,7 @@ const JC_DATA = {
     {
       id: '008', code: 'Ee', name: '008 Elan Epic',
       shortName: 'Elan Epic',
-      keyPersons: [{ name: 'Preeti', split: 50 }, { name: 'Vandana', split: 50 }],
+      keyPersons: [{ name: 'Preeti', user: 'preeti', split: 50 }, { name: 'Vandana', user: 'vandana', split: 50 }],
       monthTarget: 320000, incentive: 1600,
       userCode: 'Epicsales',
       cycles: [
@@ -87,7 +87,7 @@ const JC_DATA = {
     {
       id: '009', code: 'Av', name: '009 Pacific Av',
       shortName: 'Pacific Av',
-      keyPersons: [{ name: 'Shilat', split: 100 }],
+      keyPersons: [{ name: 'Shilat', user: 'shilat', split: 100 }],
       monthTarget: 520000, incentive: 2600,
       userCode: 'Pacificsales',
       cycles: [
@@ -99,7 +99,7 @@ const JC_DATA = {
     {
       id: '010', code: 'Mk', name: '010 Mukherjee Nagar',
       shortName: 'Mukherjee Nagar',
-      keyPersons: [{ name: 'Sneha', split: 100 }],
+      keyPersons: [{ name: 'Sneha', user: 'sneha', split: 100 }],
       monthTarget: 420000, incentive: 2100,
       userCode: 'Mngrsale',
       cycles: [
@@ -126,6 +126,21 @@ const JC_DATA = {
   getCurrentCycle(dateStr) {
     const d = dateStr ? parseInt(dateStr.split('-')[2]) : new Date().getDate();
     return d <= 10 ? 1 : d <= 20 ? 2 : 3;
+  },
+
+  // ── HELPER: stores where this user is a JC key person ──────
+  // Matches by exact username first, then first name; Store Managers
+  // also match their store by 3-digit id prefix. Never falls back to
+  // all stores — privacy: non-key-persons see nothing here.
+  getStoresForUser(u) {
+    if (!u) return [];
+    const uname = (u.username || '').toLowerCase();
+    const first = (u.name || '').split(' ')[0].toLowerCase();
+    const isMgr = u.role === 'Store Manager';
+    return this.stores.filter(s =>
+      s.keyPersons.some(kp => (kp.user && kp.user === uname) || kp.name.toLowerCase() === first) ||
+      (isMgr && u.storeId && s.id === String(u.storeId).slice(0, 3))
+    );
   },
 
   // ── HELPER: get live daily data (localStorage overrides built-in) ──

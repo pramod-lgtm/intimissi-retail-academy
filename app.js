@@ -90,6 +90,16 @@ const APP = {
           });
           if (pinChanged) APP.storage.set('users', users);
         }
+        // Pull JC cycle data uploaded from another device (cloud wins)
+        if (cfg.jc_data && typeof JC_DATA !== 'undefined') {
+          var month = JC_DATA.monthCode;
+          var jc = cfg.jc_data[month];
+          if (jc) {
+            if (jc.daily)  localStorage.setItem('jc_daily_' + month, JSON.stringify(jc.daily));
+            if (jc.cycles) localStorage.setItem('jc_cycles_' + month, JSON.stringify(jc.cycles));
+            if (jc.updatedAt) localStorage.setItem('jc_updated_' + month, jc.updatedAt);
+          }
+        }
       })
       .catch(function() {})
       .finally(function() { if (callback) callback(); }); // always proceed even if offline
@@ -279,7 +289,7 @@ const APP = {
 
     document.getElementById('sidebar-user-name').textContent = u.name;
     document.getElementById('sidebar-user-role').textContent = u.role;
-    document.getElementById('sidebar-user-store').textContent = store ? store.name : 'All Stores';
+    document.getElementById('sidebar-user-store').textContent = store ? store.name : (u.storeId || 'All Stores');
     document.getElementById('sidebar-avatar').textContent = u.name.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase();
     document.getElementById('sidebar-xp-fill').style.width = lp.pct + '%';
     document.getElementById('sidebar-xp-label').textContent = lvl.badge + ' ' + lvl.name;
@@ -295,12 +305,16 @@ const APP = {
     const isAdmin = ['Super Admin', 'HR', 'Operations Head'].includes(role);
     const isManager = ['Area Manager', 'Store Manager'].includes(role);
     const isStylist = ['Senior Stylist', 'Retail Stylist'].includes(role);
+    // Key persons own a store's JC target this month — give them direct access
+    const isJCKeyPerson = !isAdmin && !isManager &&
+      typeof JC_DATA !== 'undefined' && JC_DATA.getStoresForUser(u).length > 0;
 
     const learningNav = `
       <div class="nav-section">
         <div class="nav-section-title">Performance</div>
         <div class="nav-item" onclick="APP.navigate('dashboard')"><span class="icon">🏠</span><span>My Dashboard</span></div>
         <div class="nav-item" onclick="APP.navigate('missions')"><span class="icon">📋</span><span>Daily Missions</span></div>
+        ${isJCKeyPerson ? `<div class="nav-item" onclick="APP.navigate('jc-performance')"><span class="icon">🎯</span><span>My JC Target</span></div>` : ''}
         <div class="nav-item" onclick="APP.navigate('report-card')"><span class="icon">📊</span><span>Report Card</span></div>
         <div class="nav-item" onclick="APP.navigate('social-wall')"><span class="icon">👏</span><span>Recognition Wall</span></div>
         <div class="nav-item" onclick="APP.navigate('live-store')"><span class="icon">⚡</span><span>Live Scoreboard</span></div>
@@ -1486,33 +1500,40 @@ const APP = {
       return;
     }
     const u = this.state.user;
-    const isAdmin = ['Super Admin','HR','Operations Head','Area Manager'].includes(u.role);
+    // Company-wide view: senior management only. Everyone else sees at most their own store.
+    const seesAll = ['Super Admin','HR','Operations Head','Area Manager'].includes(u.role);
     const today = new Date().toISOString().slice(0,10);
     const currentCycle = JC_DATA.getCurrentCycle(today);
     const daily = JC_DATA.getLiveDaily();
 
-    // For non-admin: show only their store
-    const stores = isAdmin
-      ? JC_DATA.stores
-      : JC_DATA.stores.filter(s => s.keyPersons.some(kp => kp.name.toLowerCase() === u.name.split(' ')[0].toLowerCase()) || s.userCode.toLowerCase() === (u.username || '').toLowerCase());
-    const displayStores = stores.length > 0 ? stores : JC_DATA.stores;
+    const displayStores = seesAll ? JC_DATA.stores : JC_DATA.getStoresForUser(u);
+    if (displayStores.length === 0) {
+      el.innerHTML = `<div class="empty-state fade-in">
+        <div class="icon">🎯</div>
+        <h3>No JC Target Assigned</h3>
+        <p class="muted">You're not a key person for a JC cycle store this month.<br>
+        Keep crushing your daily missions and leaderboard rank — key persons are picked every month.</p>
+      </div>`;
+      return;
+    }
 
-    // Grand total row
+    // Grand total row (company-wide — senior management only)
     const grandAchieved = JC_DATA.stores.reduce((sum, s) => {
       const liveS = JC_DATA.getLiveStore(s.id);
       return sum + liveS.cycles.reduce((a, c) => a + c.achieved, 0);
     }, 0);
     const grandPct = JC_DATA.totalTarget > 0 ? grandAchieved / JC_DATA.totalTarget : 0;
 
-    // Daily chart for the last 7 days
+    // Daily chart for the last 7 days — scoped to the stores this user may see
     const last7 = daily.slice(-7);
-    const storeIds = JC_DATA.stores.map(s => s.id);
+    const storeIds = displayStores.map(s => s.id);
     const dailyTotals = last7.map(d => ({ date: d.date, total: storeIds.reduce((s, id) => s + (d[id] || 0), 0) }));
     const maxDaily = Math.max(...dailyTotals.map(d => d.total), 1);
+    const chartScope = seesAll ? 'All Stores' : displayStores.map(s => s.shortName).join(' + ');
 
     el.innerHTML = `<div class="fade-in">
       <!-- HEADER SUMMARY -->
-      <div class="jc-header-card">
+      ${seesAll ? `<div class="jc-header-card">
         <div class="jc-month-label">${JC_DATA.month} · JC Cycle ${currentCycle} Active</div>
         <div class="jc-grand-row">
           <div>
@@ -1531,10 +1552,18 @@ const APP = {
         <div class="jc-grand-bar-wrap">
           <div class="jc-grand-bar" style="width:${Math.min(100,Math.round(grandPct*100))}%"></div>
         </div>
-      </div>
+      </div>` : `<div class="jc-header-card">
+        <div class="jc-month-label">${JC_DATA.month} · JC Cycle ${currentCycle} Active</div>
+        <div class="jc-grand-row">
+          <div>
+            <div class="jc-grand-val">🎯 My JC Mission</div>
+            <div class="jc-grand-label">You are the key person for ${displayStores.map(s=>s.shortName).join(' & ')} — own it!</div>
+          </div>
+        </div>
+      </div>`}
 
       <!-- DAILY TREND CHART -->
-      <div class="section-header"><h3>📈 Daily Sales Trend</h3><span class="muted text-xs">Last ${last7.length} days · All Stores</span></div>
+      <div class="section-header"><h3>📈 Daily Sales Trend</h3><span class="muted text-xs">Last ${last7.length} days · ${chartScope}</span></div>
       <div class="card jc-chart-wrap">
         <div class="jc-bar-chart">
           ${dailyTotals.map(d => {
@@ -1543,8 +1572,10 @@ const APP = {
             const label = dt.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
             const isToday = d.date === today;
             return `<div class="jc-bar-col">
-              <div class="jc-bar-amount">₹${Math.round(d.total/1000)}K</div>
-              <div class="jc-bar-body"><div class="jc-bar-fill ${isToday?'today':''}" style="height:${pct}%"></div></div>
+              <div class="jc-bar-body">
+                <div class="jc-bar-amount" style="bottom:calc(${pct}% + 3px)">₹${Math.round(d.total/1000)}K</div>
+                <div class="jc-bar-fill ${isToday?'today':''}" style="height:${pct}%"></div>
+              </div>
               <div class="jc-bar-label ${isToday?'today':''}">${label}</div>
             </div>`;
           }).join('')}
@@ -1552,8 +1583,8 @@ const APP = {
       </div>
 
       <!-- STORE-WISE JC CYCLE CARDS -->
-      <div class="section-header"><h3>🏪 Store Performance by JC Cycle</h3>
-        <button class="btn btn-outline btn-sm" onclick="APP.navigate('data-upload')">📤 Update Data</button>
+      <div class="section-header"><h3>🏪 ${seesAll ? 'Store Performance by JC Cycle' : 'My Store — JC Cycles'}</h3>
+        ${['Super Admin','HR','Operations Head'].includes(u.role) ? `<button class="btn btn-outline btn-sm" onclick="APP.navigate('data-upload')">📤 Update Data</button>` : ''}
       </div>
       <div class="jc-store-grid">
         ${displayStores.map(s => {
@@ -1620,12 +1651,12 @@ const APP = {
               </div>
             </div>
 
-            <!-- Incentive row (managers only) -->
-            ${isAdmin ? `<div class="jc-incentive-row">
+            <!-- Incentive row: admins see all; key persons only ever reach their own store here -->
+            ${`<div class="jc-incentive-row">
               <span class="text-xs muted">Incentive @ 100%: <strong>₹${s.incentive.toLocaleString('en-IN')}</strong></span>
               ${s.keyPersons.length > 1 ? `<span class="text-xs muted">(${s.keyPersons.map(kp=>kp.name+' '+kp.split+'%').join(' / ')})</span>` : ''}
               <span class="text-xs" style="color:${monthPct>=1?'#4caf50':'#888'}">${monthPct>=1?'✅ Earned!':'~₹'+Math.round(s.incentive*monthPct).toLocaleString('en-IN')+' projected'}</span>
-            </div>` : ''}
+            </div>`}
           </div>`;
         }).join('')}
       </div>
@@ -1666,6 +1697,11 @@ const APP = {
 
   // ── DATA UPLOAD PAGE ──────────────────────────────────────
   renderDataUpload(el) {
+    const role = this.state.user?.role;
+    if (!['Super Admin', 'HR', 'Operations Head'].includes(role)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Admin access only</h3><p class="muted">Ask your admin to upload sales data.</p></div>';
+      return;
+    }
     el.innerHTML = `<div class="fade-in">
       <div class="section-header">
         <h3>📤 Upload Sales Data</h3>
@@ -1741,7 +1777,7 @@ const APP = {
       <!-- Current Data Status -->
       <div class="section-header mt-2"><h3>📊 Current Data Status</h3></div>
       <div class="kpi-grid">
-        <div class="card"><div class="card-title">Data Last Updated</div><div class="card-value text-lg">${JC_DATA.updatedAt}</div><div class="card-sub">Seeded from Excel upload</div></div>
+        <div class="card"><div class="card-title">Data Last Updated</div><div class="card-value text-lg">${localStorage.getItem('jc_updated_' + JC_DATA.monthCode) || JC_DATA.updatedAt}</div><div class="card-sub">Latest upload</div></div>
         <div class="card"><div class="card-title">Days With Data</div><div class="card-value">${JC_DATA.getLiveDaily().filter(d=>Object.values(d).slice(1).some(v=>v>0)).length}</div><div class="card-sub">of ${new Date().getDate()} days this month</div></div>
         <div class="card"><div class="card-title">Total Recorded</div><div class="card-value gold">₹${Math.round(JC_DATA.getLiveDaily().reduce((s,d)=>s+JC_DATA.stores.reduce((ss,st)=>ss+(d[st.id]||0),0),0)/1000)}K</div><div class="card-sub">Sales MTD</div></div>
       </div>
@@ -1937,6 +1973,12 @@ const APP = {
       });
     });
     localStorage.setItem('jc_cycles_' + JC_DATA.monthCode, JSON.stringify(cycleAchieved));
+    const todayStr = new Date().toISOString().slice(0,10);
+    localStorage.setItem('jc_updated_' + JC_DATA.monthCode, todayStr);
+    // Push to cloud so every device (key persons' phones) gets the update on next load
+    const patch = {};
+    patch[JC_DATA.monthCode] = { daily: dailyData, cycles: cycleAchieved, updatedAt: todayStr };
+    this.syncConfig({ jc_data: patch });
   },
 
   saveManualEntry() {
@@ -1974,7 +2016,7 @@ const APP = {
 
   checkJCBadges() {
     const u = this.getUser();
-    const storeId = JC_DATA.stores.find(s => s.userCode.toLowerCase() === (u.username||'').toLowerCase() || s.keyPersons.some(kp => kp.name.toLowerCase() === u.name.split(' ')[0].toLowerCase()))?.id;
+    const storeId = JC_DATA.getStoresForUser(u)[0]?.id;
     if (!storeId) return;
     const liveS = JC_DATA.getLiveStore(storeId);
     const earnedIds = [];
