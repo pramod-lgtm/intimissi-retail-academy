@@ -37,6 +37,31 @@ function ghRequest(method, path, body) {
   });
 }
 
+// Merge an incoming patch into the stored config.
+// Object maps (keyed) are shallow-assigned; arrays with {id} are unioned by id;
+// rpims_rules is replaced only when the patch version is newer.
+function mergePatch(cfg, patch) {
+  cfg = cfg || {};
+  ['video_urls', 'pin_overrides', 'jc_data', 'exec_perf', 'jc_targets'].forEach(function(k) {
+    if (patch[k]) { if (!cfg[k]) cfg[k] = {}; Object.assign(cfg[k], patch[k]); }
+  });
+  if (patch.rpims_rules && patch.rpims_rules.version) {
+    if (!cfg.rpims_rules || (patch.rpims_rules.version >= (cfg.rpims_rules.version || 0))) {
+      cfg.rpims_rules = patch.rpims_rules;
+    }
+  }
+  ['rpims_ledger', 'rpims_redemptions'].forEach(function(k) {
+    if (Array.isArray(patch[k])) {
+      if (!Array.isArray(cfg[k])) cfg[k] = [];
+      var seen = {};
+      cfg[k].forEach(function(t) { if (t && t.id) seen[t.id] = true; });
+      patch[k].forEach(function(t) { if (t && t.id && !seen[t.id]) { cfg[k].push(t); seen[t.id] = true; } });
+    }
+  });
+  if (Array.isArray(patch.rpims_audit)) cfg.rpims_audit = patch.rpims_audit;
+  return cfg;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -86,33 +111,17 @@ module.exports = async function handler(req, res) {
     }
 
     // Read current file (need SHA for update)
-    let currentConfig = { video_urls: {}, pin_overrides: {} };
+    let currentConfig = {};
     let sha = null;
     try {
       const r = await ghRequest('GET', '/repos/' + REPO + '/contents/' + FILE);
       if (r.status === 200) {
         sha = r.body.sha;
         currentConfig = JSON.parse(Buffer.from(r.body.content, 'base64').toString('utf8'));
-        if (!currentConfig.video_urls) currentConfig.video_urls = {};
-        if (!currentConfig.pin_overrides) currentConfig.pin_overrides = {};
       }
     } catch(e) {}
 
-    // Merge patch
-    if (patch.video_urls) Object.assign(currentConfig.video_urls, patch.video_urls);
-    if (patch.pin_overrides) Object.assign(currentConfig.pin_overrides, patch.pin_overrides);
-    if (patch.jc_data) {
-      if (!currentConfig.jc_data) currentConfig.jc_data = {};
-      Object.assign(currentConfig.jc_data, patch.jc_data); // keyed by month, last upload wins
-    }
-    if (patch.exec_perf) {
-      if (!currentConfig.exec_perf) currentConfig.exec_perf = {};
-      Object.assign(currentConfig.exec_perf, patch.exec_perf); // keyed by month, last upload wins
-    }
-    if (patch.jc_targets) {
-      if (!currentConfig.jc_targets) currentConfig.jc_targets = {};
-      Object.assign(currentConfig.jc_targets, patch.jc_targets); // keyed by month, last upload wins
-    }
+    currentConfig = mergePatch(currentConfig, patch);
 
     // Commit with retry on 409 conflict (SHA changed between read and write)
     let committed = false;
@@ -123,24 +132,7 @@ module.exports = async function handler(req, res) {
           const fresh = await ghRequest('GET', '/repos/' + REPO + '/contents/' + FILE);
           if (fresh.status === 200) {
             sha = fresh.body.sha;
-            const freshCfg = JSON.parse(Buffer.from(fresh.body.content, 'base64').toString('utf8'));
-            if (!freshCfg.video_urls) freshCfg.video_urls = {};
-            if (!freshCfg.pin_overrides) freshCfg.pin_overrides = {};
-            if (patch.video_urls) Object.assign(freshCfg.video_urls, patch.video_urls);
-            if (patch.pin_overrides) Object.assign(freshCfg.pin_overrides, patch.pin_overrides);
-            if (patch.jc_data) {
-              if (!freshCfg.jc_data) freshCfg.jc_data = {};
-              Object.assign(freshCfg.jc_data, patch.jc_data);
-            }
-            if (patch.exec_perf) {
-              if (!freshCfg.exec_perf) freshCfg.exec_perf = {};
-              Object.assign(freshCfg.exec_perf, patch.exec_perf);
-            }
-            if (patch.jc_targets) {
-              if (!freshCfg.jc_targets) freshCfg.jc_targets = {};
-              Object.assign(freshCfg.jc_targets, patch.jc_targets);
-            }
-            currentConfig = freshCfg;
+            currentConfig = mergePatch(JSON.parse(Buffer.from(fresh.body.content, 'base64').toString('utf8')), patch);
           }
         } catch(e) {}
       }

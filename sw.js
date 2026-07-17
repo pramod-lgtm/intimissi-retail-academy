@@ -1,4 +1,4 @@
-const CACHE = 'ira-v11';
+const CACHE = 'ira-v12';
 const CORE = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const CORE = [
   '/data.js',
   '/sales_data.js',
   '/jc_data.js',
+  '/rules_data.js',
   '/app.js',
   '/manifest.json',
   '/icons/icon.svg'

@@ -626,6 +626,61 @@ body {
   .sidebar { width: 220px; }
   .page-content { padding: 1.25rem; }
 }
+/* ── RPIMS: WALLET, CREDITS, RULE ENGINE ─────────────────── */
+.wallet-hero { display: flex; gap: 1.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: linear-gradient(135deg, #0d0d0d 0%, #1a1200 100%); border: 1px solid var(--gold3);
+  border-radius: var(--radius2); padding: 1.5rem; margin-bottom: 1.25rem; }
+.wallet-bal-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold3); }
+.wallet-bal-val { font-size: 2.6rem; font-weight: 900; color: var(--white); line-height: 1.1; }
+.wallet-bal-sub { font-size: 0.75rem; color: #888; margin-top: 0.25rem; }
+.wallet-rpi { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+.rpi-donut { width: 92px; height: 92px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.rpi-donut-hole { width: 68px; height: 68px; border-radius: 50%; background: var(--black1, #0d0d0d); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.rpi-donut-val { font-size: 1.5rem; font-weight: 900; color: var(--white); line-height: 1; }
+.rpi-donut-cap { font-size: 0.6rem; color: #888; letter-spacing: 0.1em; }
+.wallet-mult { font-size: 0.78rem; color: #aaa; }
+.milestone-card { margin-bottom: 1rem; }
+
+.rewards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+.reward-card { background: var(--black2); border: 1px solid var(--black4); border-radius: var(--radius); padding: 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+.reward-card.reward-locked { opacity: 0.5; }
+.reward-icon { font-size: 1.8rem; }
+.reward-label { font-size: 0.82rem; font-weight: 600; }
+.reward-cost { font-size: 0.72rem; color: var(--gold); }
+
+.credit-btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; }
+.credit-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.7rem 0.85rem; border-radius: var(--radius); border: 1px solid var(--black4); background: var(--black2); cursor: pointer; transition: var(--trans); font-family: inherit; text-align: left; }
+.credit-btn:hover { transform: translateY(-2px); }
+.credit-btn.credit-pos { border-left: 3px solid #4caf50; }
+.credit-btn.credit-neg { border-left: 3px solid #ef5350; }
+.credit-btn .credit-amt { font-size: 1.1rem; font-weight: 800; }
+.credit-btn.credit-pos .credit-amt { color: #4caf50; }
+.credit-btn.credit-neg .credit-amt { color: #ef5350; }
+.credit-btn .credit-lbl { font-size: 0.72rem; color: #bbb; }
+.console-selbar { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--black4); font-size: 0.82rem; }
+.redemption-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 0.6rem 0; border-bottom: 1px solid var(--black4); }
+.redemption-row:last-child { border-bottom: none; }
+
+.rule-engine-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.rule-line { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0; }
+.rule-line label { flex: 1; font-size: 0.85rem; }
+.rule-input { background: var(--black3); border: 1px solid var(--black4); border-radius: 8px; color: var(--white); padding: 0.4rem 0.6rem; font-family: inherit; font-size: 0.85rem; }
+.rule-input:focus { border-color: var(--gold3); outline: none; }
+.rule-block { margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--black4); }
+.rule-block:last-child { border-bottom: none; margin-bottom: 0; }
+.rule-block-title { font-size: 0.82rem; font-weight: 700; color: var(--gold); margin-bottom: 0.5rem; }
+.slab-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8rem; color: #999; flex-wrap: wrap; }
+.brand-rule-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; flex-wrap: wrap; }
+.btn-xs { padding: 0.2rem 0.5rem; font-size: 0.72rem; }
+.text-danger { color: #ef5350; }
+
+.sim-card { border: 1px solid var(--gold3); }
+.sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+.sim-result-box { background: var(--black3); border-radius: var(--radius); padding: 1rem; }
+.sim-compare { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.sim-arrow { font-size: 1.5rem; color: var(--gold); }
+.sim-num { font-size: 1.3rem; font-weight: 800; }
+
 /* Mobile shell: sidebar is replaced by a bottom tab bar + slide-in drawer */
 .bottom-nav { display: none; }
 .mobile-drawer { display: none; }

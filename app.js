@@ -110,6 +110,29 @@ const APP = {
             localStorage.setItem('exec_perf_' + m, JSON.stringify(cfg.exec_perf[m]));
           });
         }
+        // RPIMS rule set — cloud wins when its version is newer
+        if (cfg.rpims_rules && cfg.rpims_rules.version) {
+          var localR = APP.storage.get('rpims_rules');
+          if (!localR || (cfg.rpims_rules.version >= (localR.version || 0))) {
+            APP.storage.set('rpims_rules', cfg.rpims_rules);
+          }
+        }
+        // Credit ledger — merge by transaction id (union across devices)
+        if (Array.isArray(cfg.rpims_ledger)) {
+          var local = APP.storage.get('rpims_ledger', []);
+          var seen = {};
+          local.forEach(function(t) { seen[t.id] = true; });
+          cfg.rpims_ledger.forEach(function(t) { if (t && t.id && !seen[t.id]) { local.push(t); seen[t.id] = true; } });
+          APP.storage.set('rpims_ledger', local);
+        }
+        if (Array.isArray(cfg.rpims_audit)) APP.storage.set('rpims_audit', cfg.rpims_audit);
+        if (Array.isArray(cfg.rpims_redemptions)) {
+          var lr = APP.storage.get('rpims_redemptions', []);
+          var rseen = {};
+          lr.forEach(function(t) { rseen[t.id] = true; });
+          cfg.rpims_redemptions.forEach(function(t) { if (t && t.id && !rseen[t.id]) { lr.push(t); rseen[t.id] = true; } });
+          APP.storage.set('rpims_redemptions', lr);
+        }
       })
       .catch(function() {})
       .finally(function() {
@@ -446,6 +469,7 @@ const APP = {
         <div class="nav-item" onclick="APP.navigate('dashboard')"><span class="icon">🏠</span><span>My Dashboard</span></div>
         <div class="nav-item" onclick="APP.navigate('missions')"><span class="icon">📋</span><span>Daily Missions</span></div>
         ${isJCKeyPerson ? `<div class="nav-item" onclick="APP.navigate('jc-performance')"><span class="icon">🎯</span><span>My JC Target</span></div>` : ''}
+        <div class="nav-item" onclick="APP.navigate('wallet')"><span class="icon">💳</span><span>My Credits</span></div>
         <div class="nav-item" onclick="APP.navigate('report-card')"><span class="icon">📊</span><span>Report Card</span></div>
         <div class="nav-item" onclick="APP.navigate('social-wall')"><span class="icon">👏</span><span>Recognition Wall</span></div>
         <div class="nav-item" onclick="APP.navigate('live-store')"><span class="icon">⚡</span><span>Live Scoreboard</span></div>
@@ -465,6 +489,7 @@ const APP = {
         <div class="nav-section-title">Management</div>
         <div class="nav-item" onclick="APP.navigate('jc-performance')"><span class="icon">🎯</span><span>JC Cycle Tracker</span></div>
         <div class="nav-item" onclick="APP.navigate('manager-dashboard')"><span class="icon">📊</span><span>Team Dashboard</span></div>
+        <div class="nav-item" onclick="APP.navigate('credit-console')"><span class="icon">⭐</span><span>Credit Console</span></div>
         <div class="nav-item" onclick="APP.navigate('store-analytics')"><span class="icon">🏪</span><span>Store Analytics</span></div>
       </div>` : '';
 
@@ -472,6 +497,8 @@ const APP = {
       <div class="nav-section">
         <div class="nav-section-title">Administration</div>
         <div class="nav-item" onclick="APP.navigate('admin')"><span class="icon">⚙️</span><span>Admin Panel</span></div>
+        <div class="nav-item" onclick="APP.navigate('rule-engine')"><span class="icon">🧮</span><span>Rule Engine</span></div>
+        <div class="nav-item" onclick="APP.navigate('incentive-engine')"><span class="icon">💰</span><span>Incentive Engine</span></div>
         <div class="nav-item" onclick="APP.navigate('manage-users')"><span class="icon">👥</span><span>Manage Users</span></div>
         <div class="nav-item" onclick="APP.navigate('data-upload')"><span class="icon">📤</span><span>Upload Sales Data</span></div>
         <div class="nav-item" onclick="APP.navigate('reports')"><span class="icon">📋</span><span>Reports</span></div>
@@ -543,6 +570,10 @@ const APP = {
           case 'my-certs':        topTitle.textContent = '🎓 My Certificates';       this.renderMyCerts(content); break;
           case 'ai-coach':        topTitle.textContent = '🤖 AI Retail Coach';       this.renderAICoach(content); break;
           case 'jc-performance':   topTitle.textContent = '🎯 JC Cycle Tracker';      this.renderJCPerformance(content); break;
+          case 'wallet':          topTitle.textContent = '💳 My Retail Wallet';      this.renderWallet(content); break;
+          case 'credit-console':  topTitle.textContent = '⭐ Credit Console';         this.renderCreditConsole(content); break;
+          case 'rule-engine':     topTitle.textContent = '🧮 Rule Engine';           this.renderRuleEngine(content); break;
+          case 'incentive-engine':topTitle.textContent = '💰 Incentive Engine';      this.renderIncentiveEngine(content); break;
           case 'data-upload':      topTitle.textContent = '📤 Upload Sales Data';     this.renderDataUpload(content); break;
           case 'manager-dashboard':topTitle.textContent='📊 Team Dashboard';         this.renderManagerDashboard(content); break;
           case 'store-analytics': topTitle.textContent = '🏪 Store Analytics';       this.renderStoreAnalytics(content); break;
@@ -1223,6 +1254,11 @@ const APP = {
     const xp = passed ? 200 : 50;
     this.addXP(uid, xp, passed ? 'Quiz Passed' : 'Quiz Attempted');
     if (passed) this.addXP(uid, 50, 'Certificate Earned');
+    // RPIMS: first-time pass earns Learning & Compliance credits
+    if (passed && !prev.quizPassed) {
+      const mc = (this.getRules().autoCredits || {}).modulePassed;
+      if (mc) this.addCredit(uid, { code: 'module_pass', label: mc.label + ' — ' + qs.name, amt: mc.amt, pillar: mc.pillar }, '', true);
+    }
 
     this.navigate('results', {
       type: qs.type, id: qs.id, name: qs.name,
@@ -2450,6 +2486,679 @@ const APP = {
     this.storage.set('earned_jc_badges_' + u.id, [...new Set([...prev, ...earnedIds])]);
   },
 
+  // ════════════════════════════════════════════════════════
+  //  RPIMS — RETAIL PERFORMANCE & INCENTIVE MANAGEMENT
+  //  Configurable rule engine · credit ledger · RPI multiplier
+  // ════════════════════════════════════════════════════════
+
+  // Live rules = stored (admin-edited) merged over code defaults, so new
+  // default keys added in a release still appear for existing rule sets.
+  getRules() {
+    const d = typeof DEFAULT_RULES !== 'undefined' ? DEFAULT_RULES : {};
+    const stored = this.storage.get('rpims_rules');
+    if (!stored) return JSON.parse(JSON.stringify(d));
+    const merged = JSON.parse(JSON.stringify(d));
+    Object.keys(stored).forEach(k => { merged[k] = stored[k]; });
+    return merged;
+  },
+
+  // Persist an edited rule set: bump version, write audit trail, sync cloud.
+  saveRules(rules, note) {
+    const prev = this.getRules();
+    rules.version = (prev.version || 0) + 1;
+    rules.effectiveFrom = rules.effectiveFrom || (typeof JC_DATA !== 'undefined' ? JC_DATA.monthCode : new Date().toISOString().slice(0,7));
+    rules.updatedAt = new Date().toISOString();
+    rules.updatedBy = this.state.user ? this.state.user.name : 'admin';
+    this.storage.set('rpims_rules', rules);
+    const audit = this.storage.get('rpims_audit', []);
+    audit.push({ ts: rules.updatedAt, by: rules.updatedBy, version: rules.version, note: note || 'Rule update' });
+    this.storage.set('rpims_audit', audit);
+    this.syncConfig({ rpims_rules: rules, rpims_audit: audit });
+    return rules;
+  },
+
+  rpimsMonth() { return typeof JC_DATA !== 'undefined' ? JC_DATA.monthCode : new Date().toISOString().slice(0,7); },
+
+  // Highest slab whose threshold the achievement meets ({min,pct} rows)
+  slabPct(slabs, achievementPct) {
+    if (!Array.isArray(slabs)) return 0;
+    let best = 0;
+    slabs.forEach(s => { if (achievementPct >= s.min && s.pct > best) best = s.pct; });
+    // when multiple slabs qualify we want the one for the highest threshold met
+    let chosen = null;
+    slabs.slice().sort((a,b)=>a.min-b.min).forEach(s => { if (achievementPct >= s.min) chosen = s; });
+    return chosen ? chosen.pct : 0;
+  },
+
+  // ── CREDIT LEDGER ────────────────────────────────────────
+  getLedger() { return this.storage.get('rpims_ledger', []); },
+
+  addCredit(userId, codeOrObj, note, silent) {
+    const rules = this.getRules();
+    let entry;
+    if (typeof codeOrObj === 'string') {
+      const c = rules.credits.find(x => x.code === codeOrObj);
+      if (!c) return null;
+      entry = { code: c.code, label: c.label, amt: c.amt, pillar: c.pillar };
+    } else {
+      entry = codeOrObj; // { code, label, amt, pillar }
+    }
+    const txn = {
+      id: 'cr_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      userId, code: entry.code, label: entry.label, amt: entry.amt, pillar: entry.pillar,
+      date: new Date().toISOString().slice(0,10),
+      month: this.rpimsMonth(),
+      by: this.state.user ? this.state.user.id : 'system',
+      byName: this.state.user ? this.state.user.name : 'System',
+      note: note || ''
+    };
+    const ledger = this.getLedger();
+    ledger.push(txn);
+    this.storage.set('rpims_ledger', ledger);
+    this.syncConfig({ rpims_ledger: [txn] }); // union-merge on server
+    if (!silent) this.toast(`${entry.amt >= 0 ? '➕' : '➖'} ${Math.abs(entry.amt)} credits · ${entry.label}`, entry.amt >= 0 ? 'success' : 'info');
+    return txn;
+  },
+
+  // Sum of a user's credits for a month, split by pillar
+  getUserCredits(userId, month) {
+    month = month || this.rpimsMonth();
+    const byPillar = { sales: 0, brand: 0, ops: 0, customer: 0, learning: 0, behaviour: 0 };
+    let total = 0;
+    this.getLedger().forEach(t => {
+      if (t.userId === userId && t.month === month) {
+        if (byPillar[t.pillar] === undefined) byPillar[t.pillar] = 0;
+        byPillar[t.pillar] += t.amt; total += t.amt;
+      }
+    });
+    return { byPillar, total };
+  },
+
+  // Baseline pillar signals from existing app data (so RPI is meaningful
+  // before any credits are awarded): sales from ranking percentile,
+  // learning from academy completion.
+  pillarBaseline(user) {
+    const out = { sales: 0, learning: 0 };
+    const sp = this.getSalesRecord(user);
+    if (sp && typeof sp.salesPctile === 'number') out.sales = sp.salesPctile;
+    const prog = this.storage.get('progress', {})[user.id] || {};
+    const totalModules = (IRA_DATA.brands.length + IRA_DATA.categories.length + IRA_DATA.sellingModules.length) || 1;
+    const done = Object.values(prog).filter(p => p.quizPassed).length;
+    out.learning = Math.round(done / totalModules * 100);
+    return out;
+  },
+
+  // Retail Performance Index (0–100) and incentive multiplier for a user
+  computeRPI(userId, month) {
+    month = month || this.rpimsMonth();
+    const user = this.storage.get('users', []).find(u => u.id === userId);
+    if (!user) return null;
+    const rules = this.getRules();
+    const credits = this.getUserCredits(userId, month).byPillar;
+    const base = this.pillarBaseline(user);
+    const t = rules.pillarTargets || {};
+
+    const creditScore = (pillar) => {
+      const target = t[pillar] || 0;
+      if (target <= 0) return 0;
+      return Math.max(0, Math.min(100, Math.round(credits[pillar] / target * 100)));
+    };
+
+    const pillars = {
+      sales:     Math.round(base.sales),
+      brand:     creditScore('brand'),
+      ops:       creditScore('ops'),
+      customer:  creditScore('customer'),
+      learning:  Math.max(base.learning, creditScore('learning')),
+      behaviour: creditScore('behaviour')
+    };
+
+    const w = rules.weights;
+    let rpi = 0;
+    Object.keys(w).forEach(k => { rpi += (pillars[k] || 0) * (w[k].pct / 100); });
+    rpi = Math.round(rpi);
+
+    let band = (rules.multiplierBands || []).slice().sort((a,b)=>a.minRPI-b.minRPI).reduce((acc,b)=> rpi >= b.minRPI ? b : acc, null);
+    const mult = band ? band.mult : 1;
+
+    return { pillars, rpi, mult, weights: w };
+  },
+
+  // Wallet snapshot for an employee
+  getWallet(userId) {
+    const rules = this.getRules();
+    let earned = 0, deducted = 0;
+    this.getLedger().forEach(t => {
+      if (t.userId !== userId) return;
+      if (t.amt >= 0) earned += t.amt; else deducted += Math.abs(t.amt);
+    });
+    const redemptions = this.storage.get('rpims_redemptions', []).filter(r => r.userId === userId);
+    const redeemed = redemptions.filter(r => r.status === 'approved').reduce((s,r)=>s+r.cost,0);
+    const pending  = redemptions.filter(r => r.status === 'pending').reduce((s,r)=>s+r.cost,0);
+    const balance  = earned - deducted - redeemed - pending;
+    const lifetime = earned;
+    let next = null;
+    (rules.milestones || []).slice().sort((a,b)=>a.at-b.at).some(m => { if (lifetime < m.at) { next = m; return true; } return false; });
+    return { balance, lifetime, deducted, redeemed, pending, next, redemptions };
+  },
+
+  // ── INCENTIVE ENGINE (admin only — real ₹) ───────────────
+  // For key persons we have a store target + realised sales, so we can
+  // compute the sales incentive, then apply the RPI multiplier.
+  computeIncentive(userId, month, overrideRules) {
+    month = month || this.rpimsMonth();
+    const rules = overrideRules || this.getRules();
+    const user = this.storage.get('users', []).find(u => u.id === userId);
+    if (!user || typeof JC_DATA === 'undefined') return null;
+    const stores = JC_DATA.getStoresForUser(user);
+    if (!stores.length) return null; // incentives are for key persons
+    const store = stores[0];
+    const totals = JC_DATA.getStoreTotals(store.id);
+    const realised = totals ? totals.totalAchieved : 0;
+    const achievementPct = store.monthTarget > 0 ? Math.round(realised / store.monthTarget * 100) : 0;
+
+    // This person's share of the store (split %)
+    const kp = store.keyPersons.find(k => (k.user && k.user === (user.username||'').toLowerCase()) || k.name.toLowerCase() === user.name.split(' ')[0].toLowerCase());
+    const share = kp && kp.split ? kp.split / 100 : (1 / (store.keyPersons.length || 1));
+
+    const keyPct = this.slabPct(rules.slabs.keyPerson, achievementPct);
+    const jcPct  = this.slabPct(rules.slabs.jcBonus, achievementPct);
+    const salesIncentive = Math.round(realised * share * (keyPct + jcPct) / 100);
+
+    const rpiData = this.computeRPI(userId, month);
+    const mult = rpiData ? rpiData.mult : 1;
+    const finalPayout = Math.round(salesIncentive * mult);
+
+    return {
+      user, store, realised: Math.round(realised * share), achievementPct, share,
+      keyPct, jcPct, salesIncentive, rpi: rpiData ? rpiData.rpi : 0, mult, finalPayout
+    };
+  },
+
+  // All key persons with computed incentives (for the admin engine + sim)
+  allIncentives(month, overrideRules) {
+    const out = [];
+    this.activeUsers().forEach(u => {
+      const inc = this.computeIncentive(u.id, month, overrideRules);
+      if (inc) out.push(inc);
+    });
+    return out.sort((a,b) => b.finalPayout - a.finalPayout);
+  },
+
+  // ── MY WALLET (employee) ─────────────────────────────────
+  renderWallet(el) {
+    const u = this.getUser();
+    const rules = this.getRules();
+    const month = this.rpimsMonth();
+    const w = this.getWallet(u.id);
+    const rpiData = this.computeRPI(u.id, month) || { pillars:{}, rpi:0, mult:1, weights:rules.weights };
+    const mc = this.getUserCredits(u.id, month);
+    const myTxns = this.getLedger().filter(t => t.userId === u.id).slice().reverse().slice(0, 12);
+
+    const pillarRow = (key) => {
+      const wt = rules.weights[key];
+      const score = rpiData.pillars[key] || 0;
+      return `<div class="pi-row">
+        <div class="pi-row-label">${wt.label} <span class="muted">· ${wt.pct}%</span></div>
+        <div class="pi-row-bar"><div class="pi-row-fill" style="width:${score}%;background:${score>=75?'#4caf50':score>=50?'var(--gold)':'#ef5350'}"></div></div>
+        <div class="pi-row-val">${score}</div>
+      </div>`;
+    };
+
+    const nextPct = w.next ? Math.min(100, Math.round(w.lifetime / w.next.at * 100)) : 100;
+
+    el.innerHTML = `<div class="fade-in">
+      <!-- WALLET HERO -->
+      <div class="wallet-hero">
+        <div class="wallet-balance">
+          <div class="wallet-bal-label">💳 Credit Balance</div>
+          <div class="wallet-bal-val">${w.balance.toLocaleString('en-IN')}</div>
+          <div class="wallet-bal-sub">Lifetime earned: ${w.lifetime.toLocaleString('en-IN')} · Redeemed: ${w.redeemed.toLocaleString('en-IN')}</div>
+        </div>
+        <div class="wallet-rpi">
+          <div class="rpi-donut" style="background:conic-gradient(${rpiData.rpi>=75?'#4caf50':rpiData.rpi>=60?'#c9a84c':'#ef5350'} ${rpiData.rpi*3.6}deg, var(--black4) 0deg)">
+            <div class="rpi-donut-hole"><div class="rpi-donut-val">${rpiData.rpi}</div><div class="rpi-donut-cap">RPI</div></div>
+          </div>
+          <div class="wallet-mult">Incentive multiplier <strong style="color:var(--gold)">${rpiData.mult.toFixed(2)}×</strong></div>
+        </div>
+      </div>
+
+      <!-- PILLAR SCORES -->
+      <div class="section-header"><h3>🎯 Performance Pillars</h3><span class="muted text-xs">${JC_DATA.month || month}</span></div>
+      <div class="card">
+        ${Object.keys(rules.weights).map(pillarRow).join('')}
+        <div class="text-xs muted mt-2">Your RPI is the weighted average of these six pillars. It sets your incentive multiplier — strong sales alone won't max your payout if compliance, learning or service lag.</div>
+      </div>
+
+      <!-- MILESTONE -->
+      ${w.next ? `<div class="card milestone-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+          <span class="font-bold">🏅 Next Milestone: ${w.next.reward}</span>
+          <span class="muted text-sm">${w.lifetime.toLocaleString('en-IN')} / ${w.next.at.toLocaleString('en-IN')}</span>
+        </div>
+        <div class="jc-prog-bar"><div class="jc-prog-fill" style="width:${nextPct}%;background:var(--gold)"></div></div>
+      </div>` : ''}
+
+      <!-- CREDIT BREAKDOWN THIS MONTH -->
+      <div class="section-header"><h3>📊 This Month's Credits</h3><span class="gold font-bold">${mc.total>=0?'+':''}${mc.total.toLocaleString('en-IN')}</span></div>
+      <div class="kpi-grid">
+        ${Object.keys(rules.weights).map(k => `<div class="card"><div class="card-title">${rules.weights[k].label}</div><div class="card-value ${(mc.byPillar[k]||0)>=0?'gold':''}" style="${(mc.byPillar[k]||0)<0?'color:#ef5350':''}">${(mc.byPillar[k]||0).toLocaleString('en-IN')}</div></div>`).join('')}
+      </div>
+
+      <!-- REWARDS -->
+      <div class="section-header mt-2"><h3>🎁 Redeem Credits</h3></div>
+      <div class="rewards-grid">
+        ${(rules.rewards||[]).map(r => {
+          const afford = w.balance >= r.cost;
+          return `<div class="reward-card ${afford?'':'reward-locked'}">
+            <div class="reward-icon">${r.icon||'🎁'}</div>
+            <div class="reward-label">${r.label}</div>
+            <div class="reward-cost">${r.cost.toLocaleString('en-IN')} credits</div>
+            <button class="btn ${afford?'btn-gold':'btn-outline'} btn-sm" ${afford?'':'disabled'} onclick="APP.requestRedemption('${r.code}')">${afford?'Redeem':'Locked'}</button>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- LEDGER -->
+      <div class="section-header mt-2"><h3>🧾 Recent Activity</h3></div>
+      <div class="card" style="overflow-x:auto">
+        ${myTxns.length ? `<table class="data-table"><thead><tr><th>Date</th><th>Activity</th><th>Pillar</th><th style="text-align:right">Credits</th></tr></thead>
+        <tbody>${myTxns.map(t => `<tr>
+          <td class="text-sm muted">${t.date.slice(5)}</td>
+          <td class="text-sm">${t.label}${t.note?` <span class="muted">(${t.note})</span>`:''}</td>
+          <td class="text-xs muted">${rules.weights[t.pillar]?rules.weights[t.pillar].label.split(' ')[0]:t.pillar}</td>
+          <td style="text-align:right;font-weight:700;color:${t.amt>=0?'#4caf50':'#ef5350'}">${t.amt>=0?'+':''}${t.amt}</td>
+        </tr>`).join('')}</tbody></table>` : `<div class="empty-state"><div class="icon">🧾</div><p class="muted">No credit activity yet. Earn credits through sales, learning, compliance and teamwork.</p></div>`}
+      </div>
+    </div>`;
+  },
+
+  requestRedemption(code) {
+    const u = this.getUser();
+    const rules = this.getRules();
+    const r = (rules.rewards||[]).find(x => x.code === code);
+    if (!r) return;
+    const w = this.getWallet(u.id);
+    if (w.balance < r.cost) { this.toast('Not enough credits yet', 'error'); return; }
+    const req = { id: 'rd_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      userId: u.id, userName: u.name, code: r.code, reward: r.label, cost: r.cost,
+      status: 'pending', date: new Date().toISOString().slice(0,10) };
+    const list = this.storage.get('rpims_redemptions', []);
+    list.push(req);
+    this.storage.set('rpims_redemptions', list);
+    this.syncConfig({ rpims_redemptions: [req] });
+    this.toast(`Redemption requested: ${r.label}. Pending admin approval.`, 'success');
+    this.navigate('wallet');
+  },
+
+  // ── CREDIT CONSOLE (manager / admin) ─────────────────────
+  renderCreditConsole(el) {
+    const me = this.getUser();
+    if (!['Super Admin','HR','Operations Head','Area Manager','Store Manager'].includes(me.role)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Managers only</h3></div>'; return;
+    }
+    const isAdmin = ['Super Admin','HR','Operations Head'].includes(me.role);
+    const rules = this.getRules();
+    let team = this.activeUsers().filter(x => ['Retail Stylist','Senior Stylist','Store Manager'].includes(x.role));
+    if (!isAdmin) team = team.filter(x => x.storeId === me.storeId && x.id !== me.id);
+    team.sort((a,b) => a.name.localeCompare(b.name));
+
+    if (!this._consoleUserId || !team.find(t => t.id === this._consoleUserId)) {
+      this._consoleUserId = team[0] ? team[0].id : '';
+    }
+    const sel = this._consoleUserId;
+    const pos = rules.credits.filter(c => c.amt > 0);
+    const neg = rules.credits.filter(c => c.amt < 0);
+    const recent = this.getLedger().filter(t => t.month === this.rpimsMonth() && team.some(x=>x.id===t.userId)).slice().reverse().slice(0, 15);
+    const pendingRedemptions = isAdmin ? this.storage.get('rpims_redemptions', []).filter(r => r.status === 'pending') : [];
+
+    const selUser = team.find(t => t.id === sel);
+    const selCredits = sel ? this.getUserCredits(sel).total : 0;
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>⭐ Credit Console</h3><span class="muted text-xs">Award or deduct Retail Performance Credits</span></div>
+
+      ${team.length === 0 ? `<div class="empty-state"><div class="icon">👥</div><h3>No team members</h3></div>` : `
+      <div class="card">
+        <label class="text-xs muted">Employee</label>
+        <select id="console-user" class="input-select" style="width:100%;margin-top:0.25rem" onchange="APP._consoleUserId=this.value;APP.navigate('credit-console')">
+          ${team.map(x => `<option value="${x.id}" ${x.id===sel?'selected':''}>${x.name} — ${x.storeId||x.role}</option>`).join('')}
+        </select>
+        ${selUser ? `<div class="console-selbar">
+          <span>This month: <strong class="gold">${selCredits.toLocaleString('en-IN')} credits</strong></span>
+          <span>RPI: <strong>${(this.computeRPI(sel)||{rpi:0}).rpi}</strong></span>
+          <button class="btn btn-ghost btn-sm" onclick="APP.viewMemberWallet('${sel}')">View Wallet →</button>
+        </div>` : ''}
+      </div>
+
+      <div class="section-header mt-2"><h3>➕ Award Credits</h3></div>
+      <div class="credit-btn-grid">
+        ${pos.map(c => `<button class="credit-btn credit-pos" onclick="APP.consoleAward('${c.code}')"><span class="credit-amt">+${c.amt}</span><span class="credit-lbl">${c.label}</span></button>`).join('')}
+      </div>
+
+      <div class="section-header mt-2"><h3>➖ Deductions</h3></div>
+      <div class="credit-btn-grid">
+        ${neg.map(c => `<button class="credit-btn credit-neg" onclick="APP.consoleAward('${c.code}')"><span class="credit-amt">${c.amt}</span><span class="credit-lbl">${c.label}</span></button>`).join('')}
+      </div>
+
+      ${isAdmin && pendingRedemptions.length ? `
+      <div class="section-header mt-2"><h3>🎁 Pending Redemptions</h3><span class="badge-pill badge-gold">${pendingRedemptions.length}</span></div>
+      <div class="card">
+        ${pendingRedemptions.map(r => `<div class="redemption-row">
+          <div><strong>${r.userName}</strong> · ${r.reward} <span class="muted">(${r.cost} credits)</span></div>
+          <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-gold btn-sm" onclick="APP.approveRedemption('${r.id}')">Approve</button>
+            <button class="btn btn-outline btn-sm" onclick="APP.rejectRedemption('${r.id}')">Reject</button>
+          </div>
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div class="section-header mt-2"><h3>🧾 Recent Team Activity</h3></div>
+      <div class="card" style="overflow-x:auto">
+        ${recent.length ? `<table class="data-table"><thead><tr><th>Date</th><th>Employee</th><th>Activity</th><th style="text-align:right">Credits</th></tr></thead>
+        <tbody>${recent.map(t => { const nm = (this.storage.get('users',[]).find(x=>x.id===t.userId)||{}).name||'—';
+          return `<tr><td class="text-sm muted">${t.date.slice(5)}</td><td class="text-sm">${nm}</td><td class="text-sm">${t.label}</td><td style="text-align:right;font-weight:700;color:${t.amt>=0?'#4caf50':'#ef5350'}">${t.amt>=0?'+':''}${t.amt}</td></tr>`;
+        }).join('')}</tbody></table>` : `<div class="empty-state"><p class="muted">No credit activity this month yet.</p></div>`}
+      </div>`}
+    </div>`;
+  },
+
+  consoleAward(code) {
+    if (!this._consoleUserId) { this.toast('Select an employee first', 'error'); return; }
+    this.addCredit(this._consoleUserId, code);
+    this.navigate('credit-console');
+  },
+
+  viewMemberWallet(userId) {
+    // Admins can peek a member's wallet by temporarily viewing as them (read-only render)
+    this._walletPeek = userId;
+    const orig = this.getUser();
+    const target = this.storage.get('users', []).find(u => u.id === userId);
+    if (!target) return;
+    const content = document.getElementById('page-content');
+    document.getElementById('top-bar-title').textContent = '💳 ' + target.name + "'s Wallet";
+    const realGetUser = this.getUser;
+    this.getUser = () => target;
+    try { this.renderWallet(content); } finally { this.getUser = realGetUser; }
+  },
+
+  approveRedemption(id) {
+    const list = this.storage.get('rpims_redemptions', []);
+    const r = list.find(x => x.id === id);
+    if (!r) return;
+    r.status = 'approved'; r.approvedBy = this.getUser().name; r.approvedDate = new Date().toISOString().slice(0,10);
+    this.storage.set('rpims_redemptions', list);
+    this.syncConfig({ rpims_redemptions: list });
+    this.toast(`Approved: ${r.reward} for ${r.userName}`, 'success');
+    this.navigate('credit-console');
+  },
+
+  rejectRedemption(id) {
+    const list = this.storage.get('rpims_redemptions', []);
+    const r = list.find(x => x.id === id);
+    if (!r) return;
+    r.status = 'rejected';
+    this.storage.set('rpims_redemptions', list);
+    this.syncConfig({ rpims_redemptions: list });
+    this.toast(`Rejected redemption for ${r.userName}`, 'info');
+    this.navigate('credit-console');
+  },
+
+  // ── RULE ENGINE (admin) ──────────────────────────────────
+  renderRuleEngine(el) {
+    if (!['Super Admin','HR','Operations Head'].includes(this.state.user?.role)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Admin access only</h3></div>'; return;
+    }
+    const r = this.getRules();
+    const audit = this.storage.get('rpims_audit', []).slice().reverse().slice(0, 10);
+    const weightSum = Object.values(r.weights).reduce((s,x)=>s+x.pct,0);
+
+    const slabEditor = (key, label) => `
+      <div class="rule-block">
+        <div class="rule-block-title">${label}</div>
+        <div id="slab-${key}">
+          ${r.slabs[key].map((s,i) => `<div class="slab-row" data-slab="${key}">
+            <span>≥</span><input type="number" class="rule-input" data-f="min" value="${s.min}" style="width:70px"><span>% achievement →</span>
+            <input type="number" step="0.01" class="rule-input" data-f="pct" value="${s.pct}" style="width:80px"><span>% payout</span>
+            <button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-outline btn-xs mt-1" onclick="APP.addSlabRow('${key}')">+ Add slab</button>
+      </div>`;
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="rule-engine-header">
+        <div>
+          <div class="section-header" style="margin:0"><h3>🧮 Incentive Rule Engine</h3></div>
+          <div class="muted text-sm">Version ${r.version} · effective ${r.effectiveFrom}${r.updatedBy?` · last edited by ${r.updatedBy}`:''}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="APP.saveRuleEngine()">💾 Save All Changes</button>
+          <button class="btn btn-outline" onclick="APP.resetRules()">↺ Reset to Defaults</button>
+        </div>
+      </div>
+      <div class="text-xs muted mb-2">Every value below is live and configurable — no coding needed. Saving bumps the version and records who changed what. Changes sync to all devices.</div>
+
+      <!-- WEIGHTS -->
+      <div class="section-header mt-2"><h3>⚖️ Pillar Weights</h3><span class="${weightSum===100?'':'text-danger'}" id="weight-sum" style="font-weight:700;color:${weightSum===100?'#4caf50':'#ef5350'}">Total: ${weightSum}%</span></div>
+      <div class="card">
+        ${Object.keys(r.weights).map(k => `<div class="rule-line">
+          <label>${r.weights[k].label}</label>
+          <input type="number" class="rule-input weight-input" data-w="${k}" value="${r.weights[k].pct}" style="width:80px" oninput="APP.recalcWeightSum()"><span>%</span>
+        </div>`).join('')}
+        <div class="text-xs muted mt-1">Must total 100%. These weights turn the six pillar scores into the 0–100 RPI.</div>
+      </div>
+
+      <!-- MULTIPLIER BANDS -->
+      <div class="section-header mt-2"><h3>✖️ RPI → Incentive Multiplier</h3></div>
+      <div class="card">
+        <div id="bands-list">
+          ${r.multiplierBands.slice().sort((a,b)=>b.minRPI-a.minRPI).map(b => `<div class="slab-row" data-band="1">
+            <span>RPI ≥</span><input type="number" class="rule-input" data-f="minRPI" value="${b.minRPI}" style="width:70px"><span>→ ×</span>
+            <input type="number" step="0.01" class="rule-input" data-f="mult" value="${b.mult}" style="width:80px">
+            <button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-outline btn-xs mt-1" onclick="APP.addBandRow()">+ Add band</button>
+        <div class="text-xs muted mt-1">Example: RPI 96 → 1.10× · RPI 68 → 0.80×. The multiplier is applied to the sales incentive.</div>
+      </div>
+
+      <!-- INCENTIVE SLABS -->
+      <div class="section-header mt-2"><h3>💰 Sales Incentive Slabs</h3></div>
+      <div class="card">
+        ${slabEditor('keyPerson','Key Person — % of realised sales by achievement')}
+        ${slabEditor('jcBonus','JC Cycle Bonus — added % by achievement')}
+        ${slabEditor('individual','Individual Achievement — % by achievement')}
+      </div>
+
+      <!-- PILLAR CREDIT TARGETS -->
+      <div class="section-header mt-2"><h3>🎯 Monthly Credit Targets (for 100% pillar score)</h3></div>
+      <div class="card">
+        ${Object.keys(r.pillarTargets).map(k => `<div class="rule-line">
+          <label>${r.weights[k]?r.weights[k].label:k}</label>
+          <input type="number" class="rule-input ptarget-input" data-p="${k}" value="${r.pillarTargets[k]}" style="width:100px"><span>credits</span>
+        </div>`).join('')}
+      </div>
+
+      <!-- CREDIT CATALOG -->
+      <div class="section-header mt-2"><h3>➕➖ Credit & Deduction Values</h3></div>
+      <div class="card" style="overflow-x:auto">
+        <table class="data-table"><thead><tr><th>Activity</th><th>Pillar</th><th style="width:120px">Credits</th></tr></thead>
+        <tbody>${r.credits.map((c,i) => `<tr>
+          <td class="text-sm">${c.label}</td>
+          <td class="text-xs muted">${r.weights[c.pillar]?r.weights[c.pillar].label.split(' ')[0]:c.pillar}</td>
+          <td><input type="number" class="rule-input credit-input" data-code="${c.code}" value="${c.amt}" style="width:90px"></td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+
+      <!-- BRAND RULES -->
+      <div class="section-header mt-2"><h3>🏷️ Brand Incentive Rules</h3></div>
+      <div class="card">
+        ${Object.keys(r.brandRules).map(b => {
+          const br = r.brandRules[b];
+          return `<div class="brand-rule-row">
+            <strong style="min-width:90px">${b}</strong>
+            ${br.mode==='flat'
+              ? `<span class="muted text-sm">Flat</span> <input type="number" step="0.01" class="rule-input brand-flat" data-brand="${b}" value="${br.pct}" style="width:80px"><span>% of brand sales</span>`
+              : `<span class="muted text-sm">Slab-based (${br.slabs.length} tiers) — edit in JSON below</span>`}
+          </div>`;
+        }).join('')}
+        <div class="text-xs muted mt-1">Flat brands earn a % of all their sales. Slab brands (e.g. Fablush) pay by achievement tier. Brand-split sales upload enables per-brand payout automatically.</div>
+      </div>
+
+      <!-- AUDIT TRAIL -->
+      <div class="section-header mt-2"><h3>📜 Change Audit Trail</h3></div>
+      <div class="card" style="overflow-x:auto">
+        ${audit.length ? `<table class="data-table"><thead><tr><th>When</th><th>Version</th><th>By</th><th>Note</th></tr></thead>
+        <tbody>${audit.map(a => `<tr><td class="text-sm muted">${new Date(a.ts).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>v${a.version}</td><td class="text-sm">${a.by}</td><td class="text-sm">${a.note}</td></tr>`).join('')}</tbody></table>`
+        : `<div class="empty-state"><p class="muted">No rule changes yet. Every future edit is logged here.</p></div>`}
+      </div>
+    </div>`;
+  },
+
+  addSlabRow(key) {
+    const wrap = document.getElementById('slab-' + key);
+    const div = document.createElement('div');
+    div.className = 'slab-row'; div.setAttribute('data-slab', key);
+    div.innerHTML = `<span>≥</span><input type="number" class="rule-input" data-f="min" value="100" style="width:70px"><span>% achievement →</span><input type="number" step="0.01" class="rule-input" data-f="pct" value="0.10" style="width:80px"><span>% payout</span><button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>`;
+    wrap.appendChild(div);
+  },
+
+  addBandRow() {
+    const wrap = document.getElementById('bands-list');
+    const div = document.createElement('div');
+    div.className = 'slab-row'; div.setAttribute('data-band', '1');
+    div.innerHTML = `<span>RPI ≥</span><input type="number" class="rule-input" data-f="minRPI" value="0" style="width:70px"><span>→ ×</span><input type="number" step="0.01" class="rule-input" data-f="mult" value="1.00" style="width:80px"><button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>`;
+    wrap.appendChild(div);
+  },
+
+  recalcWeightSum() {
+    let sum = 0;
+    document.querySelectorAll('.weight-input').forEach(i => sum += parseFloat(i.value) || 0);
+    const el = document.getElementById('weight-sum');
+    if (el) { el.textContent = 'Total: ' + sum + '%'; el.style.color = sum === 100 ? '#4caf50' : '#ef5350'; }
+  },
+
+  saveRuleEngine() {
+    const r = JSON.parse(JSON.stringify(this.getRules()));
+    // Weights
+    let wsum = 0;
+    document.querySelectorAll('.weight-input').forEach(i => { const k=i.dataset.w; r.weights[k].pct = parseFloat(i.value)||0; wsum += r.weights[k].pct; });
+    if (wsum !== 100) { this.toast(`Pillar weights total ${wsum}% — must be exactly 100%`, 'error'); return; }
+    // Multiplier bands
+    r.multiplierBands = [...document.querySelectorAll('[data-band]')].map(row => ({
+      minRPI: parseFloat(row.querySelector('[data-f=minRPI]').value)||0,
+      mult: parseFloat(row.querySelector('[data-f=mult]').value)||1
+    }));
+    // Slabs
+    ['keyPerson','jcBonus','individual'].forEach(key => {
+      r.slabs[key] = [...document.querySelectorAll(`[data-slab=${key}]`)].map(row => ({
+        min: parseFloat(row.querySelector('[data-f=min]').value)||0,
+        pct: parseFloat(row.querySelector('[data-f=pct]').value)||0
+      }));
+    });
+    // Pillar targets
+    document.querySelectorAll('.ptarget-input').forEach(i => { r.pillarTargets[i.dataset.p] = parseInt(i.value)||0; });
+    // Credit values
+    document.querySelectorAll('.credit-input').forEach(i => { const c = r.credits.find(x=>x.code===i.dataset.code); if (c) c.amt = parseInt(i.value)||0; });
+    // Brand flat %
+    document.querySelectorAll('.brand-flat').forEach(i => { const b = r.brandRules[i.dataset.brand]; if (b) b.pct = parseFloat(i.value)||0; });
+
+    this.saveRules(r, 'Rule engine edited via admin panel');
+    this.toast(`Rules saved — now version ${r.version}. Synced to all devices.`, 'success');
+    this.navigate('rule-engine');
+  },
+
+  resetRules() {
+    if (!confirm('Reset all incentive rules to the built-in defaults? This is logged in the audit trail.')) return;
+    const d = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    this.saveRules(d, 'Reset to defaults');
+    this.toast('Rules reset to defaults', 'info');
+    this.navigate('rule-engine');
+  },
+
+  // ── INCENTIVE ENGINE (admin) ─────────────────────────────
+  renderIncentiveEngine(el) {
+    if (!['Super Admin','HR','Operations Head'].includes(this.state.user?.role)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Admin access only</h3><p class="muted">Incentive figures are management-only.</p></div>'; return;
+    }
+    const month = this.rpimsMonth();
+    const rows = this.allIncentives(month);
+    const totalSales = rows.reduce((s,r)=>s+r.salesIncentive,0);
+    const totalFinal = rows.reduce((s,r)=>s+r.finalPayout,0);
+    const r = this.getRules();
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>💰 Incentive Engine</h3><span class="muted text-xs">${JC_DATA.month||month} · rules v${r.version}</span></div>
+      <div class="text-xs muted mb-2">Final payout = sales incentive × RPI multiplier. This stops sales-only maximising — weak compliance, learning or service pulls the multiplier below 1.0.</div>
+
+      <div class="kpi-grid">
+        <div class="card"><div class="card-title">Key Persons</div><div class="card-value">${rows.length}</div></div>
+        <div class="card"><div class="card-title">Base Sales Incentive</div><div class="card-value gold">₹${totalSales.toLocaleString('en-IN')}</div></div>
+        <div class="card"><div class="card-title">After RPI Multiplier</div><div class="card-value" style="color:${totalFinal>=totalSales?'#4caf50':'#ef5350'}">₹${totalFinal.toLocaleString('en-IN')}</div></div>
+        <div class="card"><div class="card-title">Net Adjustment</div><div class="card-value" style="color:${totalFinal>=totalSales?'#4caf50':'#ef5350'}">${totalFinal>=totalSales?'+':''}₹${(totalFinal-totalSales).toLocaleString('en-IN')}</div></div>
+      </div>
+
+      <div class="section-header mt-2"><h3>📋 Incentive Breakdown</h3></div>
+      <div class="card" style="overflow-x:auto">
+        <table class="data-table"><thead><tr><th>Key Person</th><th>Store</th><th>Ach%</th><th>Realised (share)</th><th>Key%</th><th>JC%</th><th>Sales Incentive</th><th>RPI</th><th>Mult</th><th>Final Payout</th></tr></thead>
+        <tbody>${rows.length ? rows.map(x => `<tr>
+          <td><strong>${x.user.name}</strong></td>
+          <td class="text-sm muted">${x.store.shortName}</td>
+          <td>${x.achievementPct}%</td>
+          <td class="text-sm">₹${x.realised.toLocaleString('en-IN')}</td>
+          <td>${x.keyPct}%</td>
+          <td>${x.jcPct}%</td>
+          <td class="text-sm">₹${x.salesIncentive.toLocaleString('en-IN')}</td>
+          <td><strong style="color:${x.rpi>=75?'#4caf50':x.rpi>=60?'var(--gold)':'#ef5350'}">${x.rpi}</strong></td>
+          <td>${x.mult.toFixed(2)}×</td>
+          <td><strong class="gold">₹${x.finalPayout.toLocaleString('en-IN')}</strong></td>
+        </tr>`).join('') : `<tr><td colspan="10"><div class="empty-state"><p class="muted">No key persons for ${month}. Upload a monthly target sheet to assign key persons.</p></div></td></tr>`}</tbody></table>
+      </div>
+
+      <!-- SIMULATION -->
+      <div class="section-header mt-2"><h3>🔬 Simulation — What-If</h3></div>
+      <div class="card sim-card">
+        <div class="text-sm muted mb-2">Test rule changes on real numbers without saving. Adjust and simulate — nothing is committed until you save it in the Rule Engine.</div>
+        <div class="sim-grid">
+          <div><label class="text-xs muted">Key Person 100% slab (%)</label><input type="number" step="0.01" id="sim-key100" class="input-text" value="${this.slabPct(r.slabs.keyPerson,100)}"></div>
+          <div><label class="text-xs muted">JC bonus at 100% (%)</label><input type="number" step="0.01" id="sim-jc100" class="input-text" value="${this.slabPct(r.slabs.jcBonus,100)}"></div>
+          <div><label class="text-xs muted">Top multiplier (RPI≥90)</label><input type="number" step="0.01" id="sim-mult" class="input-text" value="${(r.multiplierBands.find(b=>b.minRPI>=90)||{mult:1.1}).mult}"></div>
+        </div>
+        <button class="btn btn-gold mt-2" onclick="APP.runIncentiveSim()">Run Simulation</button>
+        <div id="sim-result" class="mt-2"></div>
+      </div>
+    </div>`;
+  },
+
+  runIncentiveSim() {
+    const r = JSON.parse(JSON.stringify(this.getRules()));
+    const key100 = parseFloat(document.getElementById('sim-key100').value);
+    const jc100  = parseFloat(document.getElementById('sim-jc100').value);
+    const mult   = parseFloat(document.getElementById('sim-mult').value);
+    // Apply the 100% slab change proportionally to the key-person and jc slabs
+    r.slabs.keyPerson = r.slabs.keyPerson.map(s => s.min === 100 ? { ...s, pct: key100 } : s);
+    r.slabs.jcBonus   = r.slabs.jcBonus.map(s => s.min === 100 ? { ...s, pct: jc100 } : s);
+    r.multiplierBands = r.multiplierBands.map(b => b.minRPI >= 90 ? { ...b, mult } : b);
+
+    const current = this.allIncentives();
+    const sim = this.allIncentives(this.rpimsMonth(), r);
+    const curTotal = current.reduce((s,x)=>s+x.finalPayout,0);
+    const simTotal = sim.reduce((s,x)=>s+x.finalPayout,0);
+    const delta = simTotal - curTotal;
+
+    document.getElementById('sim-result').innerHTML = `
+      <div class="sim-result-box">
+        <div class="sim-compare">
+          <div><div class="muted text-xs">Current total payout</div><div class="sim-num">₹${curTotal.toLocaleString('en-IN')}</div></div>
+          <div class="sim-arrow">→</div>
+          <div><div class="muted text-xs">Simulated total payout</div><div class="sim-num gold">₹${simTotal.toLocaleString('en-IN')}</div></div>
+          <div><div class="muted text-xs">Difference</div><div class="sim-num" style="color:${delta>=0?'#4caf50':'#ef5350'}">${delta>=0?'+':''}₹${delta.toLocaleString('en-IN')}</div></div>
+        </div>
+        <div class="text-xs muted mt-1">Across ${sim.length} key persons. To make this permanent, set these values in the Rule Engine and Save.</div>
+      </div>`;
+  },
+
   // ── MANAGER DASHBOARD ────────────────────────────────────
   renderManagerDashboard(el) {
     const users = this.activeUsers();
@@ -3464,6 +4173,9 @@ const APP = {
     applause.push({ from: u.id, to: toId, msg, date: new Date().toISOString() });
     this.storage.set('applause', applause);
     this.addXP(u.id, 20, 'Gave Applause');
+    // RPIMS: recognised colleague earns Team Behaviour credits
+    const ac = (this.getRules().autoCredits || {}).applauseReceived;
+    if (ac) this.addCredit(toId, { code: 'applause_recv', label: ac.label, amt: ac.amt, pillar: ac.pillar }, 'From ' + u.name.split(' ')[0], true);
     this.checkAndAwardBadges(u);
     this.toast('Applause sent! +20 XP', 'success');
     this.navigate('social-wall');
