@@ -88,6 +88,21 @@
 
 </div><!-- /app-shell -->
 
+<!-- ══ MOBILE BOTTOM NAV + DRAWER ════════════════════════════ -->
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div class="mobile-drawer" id="mobile-drawer" onclick="APP.closeDrawer()">
+  <div class="drawer-panel" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <div class="brand">INTIMISSI</div>
+        <div class="sub">RETAIL ACADEMY</div>
+      </div>
+      <button class="drawer-close" onclick="APP.closeDrawer()" aria-label="Close menu">✕</button>
+    </div>
+    <div id="mobile-drawer-nav"></div>
+  </div>
+</div>
+
 <!-- ══ TOAST CONTAINER ═══════════════════════════════════════ -->
 <div class="toast-container" id="toast-container"></div>
 

@@ -100,9 +100,107 @@ const APP = {
             if (jc.updatedAt) localStorage.setItem('jc_updated_' + month, jc.updatedAt);
           }
         }
+        // Pull executive performance data uploaded from another device (cloud wins)
+        if (cfg.exec_perf && typeof JC_DATA !== 'undefined') {
+          var em = JC_DATA.monthCode;
+          if (cfg.exec_perf[em]) {
+            localStorage.setItem('exec_perf_' + em, JSON.stringify(cfg.exec_perf[em]));
+          }
+        }
       })
       .catch(function() {})
-      .finally(function() { if (callback) callback(); }); // always proceed even if offline
+      .finally(function() {
+        // Apply uploaded executive data (works offline from localStorage too):
+        // updates SALES_DATA, creates users for new joiners, marks missing people as left.
+        APP.applyExecPerf();
+        APP.syncSalesPersonUsers();
+        APP.markRosterStatus();
+        if (callback) callback();
+      }); // always proceed even if offline
+  },
+
+  // ── EXECUTIVE PERFORMANCE (uploaded month data) ──────────
+  getExecPerf() {
+    if (typeof JC_DATA === 'undefined') return null;
+    try {
+      const blob = JSON.parse(localStorage.getItem('exec_perf_' + JC_DATA.monthCode));
+      if (blob && blob.persons && Object.keys(blob.persons).length) return blob;
+    } catch(e) {}
+    return null;
+  },
+
+  // Merge the uploaded month into SALES_DATA so every page (leaderboard,
+  // dashboard, live scoreboard, PI) reflects current performance.
+  // New executives in the file become new SALES_DATA salespersons.
+  applyExecPerf() {
+    if (typeof SALES_DATA === 'undefined') return;
+    const blob = this.getExecPerf();
+    if (!blob) return;
+    const month = JC_DATA.monthCode;
+    const persons = blob.persons;
+
+    Object.keys(persons).forEach(slug => {
+      const p = persons[slug];
+      let sp = SALES_DATA.salespersons.find(s =>
+        s.username === slug || s.name.toLowerCase() === (p.name || '').toLowerCase());
+      if (!sp) {
+        sp = { id: 'sp_' + slug.replace(/[^a-z0-9]+/g, '_'), name: p.name, username: slug,
+               store: p.store || '', bills: 0, qty: 0, atv: 0, upt: 0, custCount: 0,
+               workDays: 0, salesPerDay: 0, rankSales: 999, rankATV: 999, rankUPT: 999,
+               rankCust: 999, rankBills: 999, rankDaily: 999, salesPctile: 0, atvPctile: 0,
+               uptPctile: 0, custPctile: 0, monthly: [], fromUpload: true };
+        SALES_DATA.salespersons.push(sp);
+      }
+      if (p.store) sp.store = p.store; // reflects transfers
+      const entry = { month, sales: p.sales || 0, bills: p.bills || 0, qty: p.qty || 0, cust: p.bills || 0 };
+      const mIdx = sp.monthly.findIndex(m => m.month === month);
+      if (mIdx >= 0) sp.monthly[mIdx] = entry; else sp.monthly.push(entry);
+      sp._mtd = p.sales || 0;
+      if (p.bills > 0) {
+        sp.atv = p.sales / p.bills;
+        if (p.qty > 0) sp.upt = p.qty / p.bills;
+        if (sp.fromUpload) sp.bills = p.bills;
+      }
+    });
+
+    // Re-rank everyone present in the file by this month's numbers
+    const inFile = SALES_DATA.salespersons.filter(s =>
+      persons[s.username] || Object.values(persons).some(p => (p.name || '').toLowerCase() === s.name.toLowerCase()));
+    const pct = (i, n) => n > 1 ? Math.round((n - 1 - i) / (n - 1) * 100) : 100;
+    [...inFile].sort((a, b) => (b._mtd || 0) - (a._mtd || 0))
+      .forEach((s, i) => { s.rankSales = i + 1; s.salesPctile = pct(i, inFile.length); });
+    const withATV = inFile.filter(s => s.atv > 0);
+    [...withATV].sort((a, b) => b.atv - a.atv)
+      .forEach((s, i) => { s.rankATV = i + 1; s.atvPctile = pct(i, withATV.length); });
+    const withUPT = inFile.filter(s => s.upt > 0);
+    [...withUPT].sort((a, b) => b.upt - a.upt)
+      .forEach((s, i) => { s.rankUPT = i + 1; s.uptPctile = pct(i, withUPT.length); });
+  },
+
+  // Anyone missing from the latest uploaded month file is marked Absent/Left.
+  // Without an upload there is no roster info, so everyone stays active.
+  markRosterStatus() {
+    const blob = this.getExecPerf();
+    if (!blob) return;
+    const inFile = new Set();
+    Object.keys(blob.persons).forEach(slug => {
+      inFile.add(slug);
+      inFile.add((blob.persons[slug].name || '').toLowerCase());
+    });
+    const users = this.storage.get('users', []);
+    let changed = false;
+    users.forEach(u => {
+      if (!['Retail Stylist', 'Senior Stylist'].includes(u.role)) return;
+      const active = inFile.has((u.username || '').toLowerCase()) || inFile.has((u.name || '').toLowerCase());
+      const st = active ? 'active' : 'left';
+      if (u.status !== st) { u.status = st; changed = true; }
+    });
+    if (changed) this.storage.set('users', users);
+  },
+
+  // Users still on the roster (management is always active)
+  activeUsers() {
+    return this.storage.get('users', []).filter(u => u.status !== 'left');
   },
 
   syncConfig(patch) {
@@ -124,21 +222,22 @@ const APP = {
       ['Super Admin','HR','Operations Head','Area Manager'].includes(u.role)
     );
 
-    // Build users from real salesperson data
+    // Build users from real salesperson data (fromUpload = new joiner via admin file)
     const spUsers = SALES_DATA.salespersons
-      .filter(sp => sp.name && sp.name !== '[NONE]' && sp.bills >= 5)
+      .filter(sp => sp.name && sp.name !== '[NONE]' && (sp.bills >= 5 || sp.fromUpload))
       .map(sp => {
         const prev = existingMap[sp.id] || {};
         return {
           id:       sp.id,
           name:     sp.name,
           username: sp.username,
-          role:     'Retail Stylist',
+          role:     prev.role || 'Retail Stylist',
           storeId:  sp.store,
           pin:      prev.pin || '1234',   // default PIN, admin can reset
           xp:       prev.xp  || 0,
           level:    prev.level || 1,
-          joinDate: prev.joinDate || '2023-04-01',
+          joinDate: prev.joinDate || (sp.fromUpload ? new Date().toISOString().slice(0,10) : '2023-04-01'),
+          status:   prev.status || 'active',
           salesId:  sp.id   // link to SALES_DATA record
         };
       });
@@ -148,7 +247,8 @@ const APP = {
       u.role === 'Store Manager'
     );
 
-    const merged = [...mgmtUsers];
+    // Preserve overridden PINs / XP on management accounts across rebuilds
+    const merged = mgmtUsers.map(m => existingMap[m.id] ? { ...m, ...existingMap[m.id] } : m);
     storeManagers.forEach(m => {
       if (!existingMap[m.id]) merged.push(m);
       else merged.push({ ...m, ...existingMap[m.id] });
@@ -161,6 +261,9 @@ const APP = {
         merged.push(u);
       }
     });
+    // Keep users added manually via the Add User form (not backed by sales data)
+    const includedIds = new Set(merged.map(m => m.id));
+    existing.forEach(u => { if (!includedIds.has(u.id) && !u.salesId) merged.push(u); });
 
     this.storage.set('users', merged);
   },
@@ -187,7 +290,7 @@ const APP = {
 
   renderLoginForm() {
     const el = document.getElementById('login-form-area');
-    const users = this.storage.get('users', []);
+    const users = this.activeUsers(); // people marked Absent/Left cannot log in
 
     // Group by store for stylists, separate management
     const mgmt = users.filter(u => !['Retail Stylist','Senior Stylist'].includes(u.role));
@@ -352,8 +455,28 @@ const APP = {
         <div class="nav-item" onclick="APP.logout()"><span class="icon">🚪</span><span>Logout</span></div>
       </div>`;
 
-    document.getElementById('sidebar-nav').innerHTML = learningNav + managerNav + adminNav + bottomNav;
+    const fullNav = learningNav + managerNav + adminNav + bottomNav;
+    document.getElementById('sidebar-nav').innerHTML = fullNav;
+
+    // Mobile: drawer mirrors the full nav; bottom tab bar carries the core pages
+    const drawerNav = document.getElementById('mobile-drawer-nav');
+    if (drawerNav) drawerNav.innerHTML = fullNav;
+    const hasJC = isAdmin || isManager || isJCKeyPerson;
+    const tabs = [
+      { page: 'dashboard',   icon: '🏠', label: 'Home' },
+      { page: 'missions',    icon: '📋', label: 'Missions' },
+      hasJC ? { page: 'jc-performance', icon: '🎯', label: 'JC Cycle' }
+            : { page: 'leaderboard',    icon: '🏆', label: 'Ranks' },
+      { page: 'live-store',  icon: '⚡', label: 'Live' }
+    ];
+    const bn = document.getElementById('bottom-nav');
+    if (bn) bn.innerHTML = tabs.map(t =>
+      `<button class="bn-item" data-page="${t.page}" onclick="APP.navigate('${t.page}')"><span class="bn-icon">${t.icon}</span><span>${t.label}</span></button>`
+    ).join('') + `<button class="bn-item" onclick="APP.openDrawer()"><span class="bn-icon">☰</span><span>More</span></button>`;
   },
+
+  openDrawer()  { document.getElementById('mobile-drawer')?.classList.add('open'); },
+  closeDrawer() { document.getElementById('mobile-drawer')?.classList.remove('open'); },
 
   // ── NAVIGATION ───────────────────────────────────────────
   navigate(page, params = {}) {
@@ -362,6 +485,9 @@ const APP = {
     document.querySelectorAll('.nav-item').forEach(el => {
       if (el.getAttribute('onclick')?.includes(`'${page}'`)) el.classList.add('active');
     });
+    document.querySelectorAll('#bottom-nav .bn-item').forEach(b =>
+      b.classList.toggle('active', b.dataset.page === page));
+    this.closeDrawer();
 
     const content = document.getElementById('page-content');
     const topTitle = document.getElementById('top-bar-title');
@@ -1209,7 +1335,7 @@ const APP = {
 
   // ── LEADERBOARD ──────────────────────────────────────────
   renderLeaderboard(el) {
-    const users = this.storage.get('users', []);
+    const users = this.activeUsers();
     const prog  = this.storage.get('progress', {});
     const me    = this.state.user;
     const isStylist = ['Retail Stylist','Senior Stylist'].includes(me.role);
@@ -1710,11 +1836,26 @@ const APP = {
 
       <!-- Format Guide -->
       <div class="upload-guide-tabs">
-        <button class="tab-btn active" onclick="APP.switchUploadTab('daily',this)">📊 Daily Store Summary</button>
+        <button class="tab-btn active" onclick="APP.switchUploadTab('exec',this)">🧑‍💼 Executive Performance</button>
+        <button class="tab-btn" onclick="APP.switchUploadTab('daily',this)">📊 Daily Store Summary</button>
         <button class="tab-btn" onclick="APP.switchUploadTab('bills',this)">🧾 Bill Detail (Tally Export)</button>
       </div>
 
-      <div id="upload-tab-daily">
+      <div id="upload-tab-exec">
+        <div class="card upload-format-card">
+          <div class="card-title">Expected CSV Format — Executive Performance (recommended)</div>
+          <div class="upload-format-preview">Date,Store,Executive,Amount,Bills,Qty
+2026-07-15,001 Mahagun,Aradhya,24500,9,21
+2026-07-15,001 Mahagun,Ritika,11200,5,9
+2026-07-15,002 Burari,Khushi,8200,4,11
+2026-07-16,006 V3s,Pinki,19800,7,18</div>
+          <div class="text-xs muted mt-1">One row per executive per day. Bills and Qty columns are optional.
+          This single file updates <strong>everything</strong>: executive leaderboards, store JC cycles, and the team roster —
+          new names are added automatically as new joiners, and anyone missing from the file is marked Absent/Left.</div>
+        </div>
+      </div>
+
+      <div id="upload-tab-daily" class="hidden">
         <div class="card upload-format-card">
           <div class="card-title">Expected CSV Format — Daily Store Summary</div>
           <div class="upload-format-preview">Date,Store,Amount
@@ -1817,7 +1958,7 @@ const APP = {
   switchUploadTab(tab, btn) {
     document.querySelectorAll('.upload-guide-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['daily','bills'].forEach(t => {
+    ['exec','daily','bills'].forEach(t => {
       const el = document.getElementById('upload-tab-' + t);
       if (el) el.classList.toggle('hidden', t !== tab);
     });
@@ -1860,6 +2001,7 @@ const APP = {
 
   detectCSVFormat(headers) {
     const h = headers.map(x => x.toLowerCase());
+    if (h.includes('executive') || h.includes('staff') || h.includes('salesperson') || h.includes('employee')) return 'exec';
     if (h.includes('location') || h.includes('user') || h.includes('vch number')) return 'bills';
     if (h.includes('store') && h.includes('amount')) return 'daily';
     if (h.includes('date') && h.length <= 4) return 'daily';
@@ -1888,11 +2030,116 @@ const APP = {
     preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
 
+  // Accept 2026-07-15, 15-07-2026 and 15/07/2026 (day-first, Indian exports)
+  normalizeDate(raw) {
+    const s = (raw || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return '';
+  },
+
   confirmUpload() {
     const parsed = this._pendingUpload;
     if (!parsed) return;
 
     let updatedDays = 0, updatedStores = 0;
+
+    if (parsed.format === 'exec') {
+      // Format: Date, Store, Executive, Amount [, Bills, Qty]
+      const month = JC_DATA.monthCode;
+      let blob;
+      try { blob = JSON.parse(localStorage.getItem('exec_perf_' + month)) || {}; } catch(e) { blob = {}; }
+      if (!blob.persons) blob.persons = {};
+
+      const prevRoster = new Set(this.storage.get('users', [])
+        .filter(u => ['Retail Stylist','Senior Stylist'].includes(u.role) && u.status !== 'left')
+        .map(u => u.id));
+
+      let rows = 0, skipped = 0;
+      const touchedDates = new Set();
+      parsed.rows.forEach(r => {
+        const date = this.normalizeDate(r['Date'] || r['date']);
+        const name = (r['Executive'] || r['executive'] || r['Staff'] || r['Salesperson'] || r['Employee'] || '').trim();
+        let store = (r['Store'] || r['store'] || r['Location'] || '').trim();
+        const amount = parseInt(String(r['Amount'] || r['amount'] || '0').replace(/[^0-9]/g, '')) || 0;
+        const bills  = parseInt(String(r['Bills']  || r['bills']  || '0').replace(/[^0-9]/g, '')) || 0;
+        const qty    = parseInt(String(r['Qty']    || r['qty']    || '0').replace(/[^0-9]/g, '')) || 0;
+        if (!date || !name) { skipped++; return; }
+        if (date.slice(0, 7) !== month) { skipped++; return; } // only current month
+        const jcStore = JC_DATA.stores.find(s =>
+          s.name.toLowerCase() === store.toLowerCase() ||
+          s.shortName.toLowerCase() === store.toLowerCase() ||
+          s.id === store.slice(0, 3));
+        if (jcStore) store = jcStore.name;
+        const slug = name.toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.\-]/g, '');
+        if (!blob.persons[slug]) blob.persons[slug] = { name, store, daily: {} };
+        const p = blob.persons[slug];
+        p.name = name;
+        if (store) p.store = store;
+        p.daily[date] = { a: amount, b: bills, q: qty };
+        touchedDates.add(date);
+        rows++;
+      });
+
+      // Person month totals
+      Object.values(blob.persons).forEach(p => {
+        p.sales = 0; p.bills = 0; p.qty = 0;
+        Object.values(p.daily || {}).forEach(d => { p.sales += d.a || 0; p.bills += d.b || 0; p.qty += d.q || 0; });
+      });
+      blob.updatedAt = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('exec_perf_' + month, JSON.stringify(blob));
+      const execPatch = {};
+      execPatch[month] = blob;
+      this.syncConfig({ exec_perf: execPatch });
+
+      // Derive store-level daily totals for the uploaded dates → feeds JC cycles
+      if (touchedDates.size > 0) {
+        const existing = JC_DATA.getLiveDaily();
+        const map = {};
+        existing.forEach(d => { map[d.date] = { ...d }; });
+        touchedDates.forEach(date => {
+          if (!map[date]) map[date] = { date };
+          JC_DATA.stores.forEach(s => {
+            let sum = 0, seen = false;
+            Object.values(blob.persons).forEach(p => {
+              const d = (p.daily || {})[date];
+              if (d && p.store === s.name) { sum += d.a || 0; seen = true; }
+            });
+            if (seen) map[date][s.id] = sum;
+          });
+        });
+        const newDaily = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+        localStorage.setItem('jc_daily_' + month, JSON.stringify(newDaily));
+        this.recalcJCCycles(newDaily);
+      }
+
+      // Roster: add new joiners, mark missing as left
+      this.applyExecPerf();
+      this.syncSalesPersonUsers();
+      this.markRosterStatus();
+
+      const usersNow = this.storage.get('users', []);
+      const stylistsNow = usersNow.filter(u => ['Retail Stylist','Senior Stylist'].includes(u.role));
+      const joiners = stylistsNow.filter(u => u.status !== 'left' && !prevRoster.has(u.id)).map(u => u.name);
+      const left    = stylistsNow.filter(u => u.status === 'left').map(u => u.name);
+
+      this._pendingUpload = null;
+      const success = document.getElementById('upload-success');
+      const msg = document.getElementById('upload-success-msg');
+      const preview = document.getElementById('upload-preview');
+      if (preview) preview.classList.add('hidden');
+      if (success) success.classList.remove('hidden');
+      if (msg) msg.innerHTML =
+        `${rows} rows across ${touchedDates.size} day${touchedDates.size !== 1 ? 's' : ''} · ` +
+        `${Object.keys(blob.persons).length} executives on roster` +
+        (skipped ? ` · ${skipped} rows skipped` : '') +
+        (joiners.length ? `<br>🆕 New joiners added: ${joiners.join(', ')}` : '') +
+        (left.length ? `<br>👋 Marked Absent/Left: ${left.join(', ')}` : '');
+      this.toast('Executive performance updated! 🚀', 'success');
+      this.checkJCBadges();
+      return;
+    }
 
     if (parsed.format === 'daily') {
       // Format: Date, Store, Amount
@@ -2043,7 +2290,7 @@ const APP = {
 
   // ── MANAGER DASHBOARD ────────────────────────────────────
   renderManagerDashboard(el) {
-    const users = this.storage.get('users', []);
+    const users = this.activeUsers();
     const prog  = this.storage.get('progress', {});
     const u     = this.state.user;
     const isAdmin = ['Super Admin', 'HR', 'Operations Head'].includes(u.role);
@@ -2421,13 +2668,15 @@ const APP = {
       </div>
       <div class="card" style="overflow-x:auto">
         <table class="data-table">
-          <thead><tr><th>Name</th><th>Role</th><th>Store</th><th>XP</th><th>Level</th><th>Join Date</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Status</th><th>Role</th><th>Store</th><th>XP</th><th>Level</th><th>Join Date</th><th>Actions</th></tr></thead>
           <tbody>
             ${users.map(u => {
               const store = u.storeId ? IRA_DATA.stores.find(s=>s.id===u.storeId)?.name || u.storeId : '—';
               const lp = IRA_DATA.getLevelForXP(u.xp||0);
-              return `<tr>
+              const isLeft = u.status === 'left';
+              return `<tr ${isLeft ? 'style="opacity:0.55"' : ''}>
                 <td><strong>${u.name}</strong></td>
+                <td>${isLeft ? '<span class="badge-pill" style="background:rgba(239,83,80,0.15);color:#ef5350;font-size:0.68rem;padding:2px 8px;border-radius:10px;font-weight:700">Absent/Left</span>' : '<span style="color:#66bb6a;font-size:0.72rem">● Active</span>'}</td>
                 <td class="text-sm">${u.role}</td>
                 <td class="text-sm muted">${store}</td>
                 <td class="gold">${u.xp||0}</td>
@@ -2982,7 +3231,9 @@ const APP = {
   // ── RPOS: SOCIAL / RECOGNITION WALL ─────────────────────
   renderSocialWall(el) {
     const u = this.getUser();
-    const users = this.storage.get('users', []);
+    const users = this.activeUsers();
+    const allUsersById = {};
+    this.storage.get('users', []).forEach(x => { allUsersById[x.id] = x; });
     const applause = this.storage.get('applause', []) || [];
     const myApplause = applause.filter(a => a.to === u.id);
 
@@ -3018,8 +3269,8 @@ const APP = {
       <div class="recognition-feed">
         ${applause.length === 0 ? `<div class="empty-state"><div class="icon">👏</div><h3>Be the first!</h3><p class="muted">Recognise a colleague's great work above.</p></div>` :
         applause.slice().reverse().map(a => {
-          const from = users.find(x=>x.id===a.from);
-          const to = users.find(x=>x.id===a.to);
+          const from = allUsersById[a.from];
+          const to = allUsersById[a.to];
           if (!from || !to) return '';
           return `<div class="applause-card">
             <div class="applause-avatars">
@@ -3058,7 +3309,7 @@ const APP = {
 
   // ── RPOS: LIVE STORE SCOREBOARD ──────────────────────────
   renderLiveStore(el) {
-    const users = this.storage.get('users', []);
+    const users = this.activeUsers();
     const u = this.getUser();
     const isStylist = ['Retail Stylist','Senior Stylist'].includes(u.role);
     const canSeeAbsolute = !isStylist;
