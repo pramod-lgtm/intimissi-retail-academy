@@ -109,6 +109,10 @@ module.exports = async function handler(req, res) {
       if (!currentConfig.exec_perf) currentConfig.exec_perf = {};
       Object.assign(currentConfig.exec_perf, patch.exec_perf); // keyed by month, last upload wins
     }
+    if (patch.jc_targets) {
+      if (!currentConfig.jc_targets) currentConfig.jc_targets = {};
+      Object.assign(currentConfig.jc_targets, patch.jc_targets); // keyed by month, last upload wins
+    }
 
     // Commit with retry on 409 conflict (SHA changed between read and write)
     let committed = false;
@@ -131,6 +135,10 @@ module.exports = async function handler(req, res) {
             if (patch.exec_perf) {
               if (!freshCfg.exec_perf) freshCfg.exec_perf = {};
               Object.assign(freshCfg.exec_perf, patch.exec_perf);
+            }
+            if (patch.jc_targets) {
+              if (!freshCfg.jc_targets) freshCfg.jc_targets = {};
+              Object.assign(freshCfg.jc_targets, patch.jc_targets);
             }
             currentConfig = freshCfg;
           }

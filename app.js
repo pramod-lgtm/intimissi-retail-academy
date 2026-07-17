@@ -90,33 +90,61 @@ const APP = {
           });
           if (pinChanged) APP.storage.set('users', users);
         }
-        // Pull JC cycle data uploaded from another device (cloud wins)
-        if (cfg.jc_data && typeof JC_DATA !== 'undefined') {
-          var month = JC_DATA.monthCode;
-          var jc = cfg.jc_data[month];
-          if (jc) {
-            if (jc.daily)  localStorage.setItem('jc_daily_' + month, JSON.stringify(jc.daily));
-            if (jc.cycles) localStorage.setItem('jc_cycles_' + month, JSON.stringify(jc.cycles));
-            if (jc.updatedAt) localStorage.setItem('jc_updated_' + month, jc.updatedAt);
-          }
+        // Pull month target sheets, JC cycle data and executive performance
+        // uploaded from other devices — all months, cloud wins.
+        if (cfg.jc_targets) {
+          Object.keys(cfg.jc_targets).forEach(function(m) {
+            localStorage.setItem('jc_targets_' + m, JSON.stringify(cfg.jc_targets[m]));
+          });
         }
-        // Pull executive performance data uploaded from another device (cloud wins)
-        if (cfg.exec_perf && typeof JC_DATA !== 'undefined') {
-          var em = JC_DATA.monthCode;
-          if (cfg.exec_perf[em]) {
-            localStorage.setItem('exec_perf_' + em, JSON.stringify(cfg.exec_perf[em]));
-          }
+        if (cfg.jc_data) {
+          Object.keys(cfg.jc_data).forEach(function(m) {
+            var jc = cfg.jc_data[m];
+            if (jc.daily)  localStorage.setItem('jc_daily_' + m, JSON.stringify(jc.daily));
+            if (jc.cycles) localStorage.setItem('jc_cycles_' + m, JSON.stringify(jc.cycles));
+            if (jc.updatedAt) localStorage.setItem('jc_updated_' + m, jc.updatedAt);
+          });
+        }
+        if (cfg.exec_perf) {
+          Object.keys(cfg.exec_perf).forEach(function(m) {
+            localStorage.setItem('exec_perf_' + m, JSON.stringify(cfg.exec_perf[m]));
+          });
         }
       })
       .catch(function() {})
       .finally(function() {
-        // Apply uploaded executive data (works offline from localStorage too):
-        // updates SALES_DATA, creates users for new joiners, marks missing people as left.
+        // Order matters: pick the active month first, then apply that month's
+        // executive data, then rebuild users and roster statuses.
+        APP.applyMonthlyTargets();
         APP.applyExecPerf();
         APP.syncSalesPersonUsers();
         APP.markRosterStatus();
         if (callback) callback();
       }); // always proceed even if offline
+  },
+
+  // Switch JC_DATA to the uploaded target sheet for the current calendar
+  // month; if none, fall back to the most recent uploaded month, else the
+  // built-in seed month stays active.
+  applyMonthlyTargets() {
+    if (typeof JC_DATA === 'undefined') return;
+    const now = new Date().toISOString().slice(0, 7);
+    const months = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('jc_targets_')) months.push(k.slice(11));
+    }
+    if (!months.length) return;
+    let pick = null;
+    if (months.includes(now)) pick = now;
+    else {
+      const past = months.filter(m => m < now).sort();
+      if (past.length && JC_DATA.seedMonth < past[past.length - 1]) pick = past[past.length - 1];
+    }
+    if (!pick) return;
+    try {
+      JC_DATA.applyTargets(JSON.parse(localStorage.getItem('jc_targets_' + pick)));
+    } catch(e) {}
   },
 
   // ── EXECUTIVE PERFORMANCE (uploaded month data) ──────────
@@ -1837,8 +1865,25 @@ const APP = {
       <!-- Format Guide -->
       <div class="upload-guide-tabs">
         <button class="tab-btn active" onclick="APP.switchUploadTab('exec',this)">🧑‍💼 Executive Performance</button>
+        <button class="tab-btn" onclick="APP.switchUploadTab('targets',this)">🎯 Monthly Targets</button>
         <button class="tab-btn" onclick="APP.switchUploadTab('daily',this)">📊 Daily Store Summary</button>
         <button class="tab-btn" onclick="APP.switchUploadTab('bills',this)">🧾 Bill Detail (Tally Export)</button>
+      </div>
+
+      <div id="upload-tab-targets" class="hidden">
+        <div class="card upload-format-card">
+          <div class="card-title">Expected CSV Format — Monthly Target Sheet (upload once per month)</div>
+          <div class="upload-format-preview">Month,Store,KeyPerson,MonthTarget,Cycle1Target,Cycle2Target,Cycle3Target,Incentive
+2026-08,001 Mahagun,Aradhya,700000,224000,231000,245000,3500
+2026-08,004 Kamla Nagar,Sonali 50 / Shalu 50,950000,304000,313500,332500,4750
+2026-08,007 Rohini,Preeti 67 / Priyanka 33,850000,272000,280500,297500,4250
+2026-08,011 New Store,Ritika,400000,,,,2000</div>
+          <div class="text-xs muted mt-1">Sets next month's store targets, JC cycle targets (1–10 / 11–20 / 21–end),
+          key persons and incentives in one go. Cycle target columns are optional — left blank they are split from the
+          month target by days. Multiple key persons: <strong>"Sonali 50 / Shalu 50"</strong> (numbers = % split, optional).
+          New stores are added automatically. Upload before the month starts — the app switches over on the 1st on every device.
+          Type key person names exactly as they appear in the app.</div>
+        </div>
       </div>
 
       <div id="upload-tab-exec">
@@ -1958,7 +2003,7 @@ const APP = {
   switchUploadTab(tab, btn) {
     document.querySelectorAll('.upload-guide-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['exec','daily','bills'].forEach(t => {
+    ['exec','targets','daily','bills'].forEach(t => {
       const el = document.getElementById('upload-tab-' + t);
       if (el) el.classList.toggle('hidden', t !== tab);
     });
@@ -2001,6 +2046,8 @@ const APP = {
 
   detectCSVFormat(headers) {
     const h = headers.map(x => x.toLowerCase());
+    const hn = h.map(x => x.replace(/[\s_]+/g, ''));
+    if (hn.includes('monthtarget') || hn.includes('keyperson')) return 'targets';
     if (h.includes('executive') || h.includes('staff') || h.includes('salesperson') || h.includes('employee')) return 'exec';
     if (h.includes('location') || h.includes('user') || h.includes('vch number')) return 'bills';
     if (h.includes('store') && h.includes('amount')) return 'daily';
@@ -2039,11 +2086,126 @@ const APP = {
     return '';
   },
 
+  // Accept 2026-08, 08-2026, 08/2026, "Aug 2026", "August 2026"
+  normalizeMonth(raw) {
+    const s = (raw || '').trim();
+    let m = s.match(/^(\d{4})[\/-](\d{1,2})$/);
+    if (m) return m[1] + '-' + m[2].padStart(2, '0');
+    m = s.match(/^(\d{1,2})[\/-](\d{4})$/);
+    if (m) return m[2] + '-' + m[1].padStart(2, '0');
+    const d = new Date('1 ' + s);
+    if (!isNaN(d)) return d.toISOString().slice(0, 7);
+    return '';
+  },
+
   confirmUpload() {
     const parsed = this._pendingUpload;
     if (!parsed) return;
 
     let updatedDays = 0, updatedStores = 0;
+
+    if (parsed.format === 'targets') {
+      // Format: Month, Store, KeyPerson, MonthTarget [, Cycle1Target, Cycle2Target, Cycle3Target, Incentive]
+      const norm = r => {
+        const o = {};
+        Object.keys(r).forEach(k => { o[k.toLowerCase().replace(/[\s_]+/g, '')] = r[k]; });
+        return o;
+      };
+      const num = v => parseInt(String(v || '0').replace(/[^0-9]/g, '')) || 0;
+
+      let monthCode = '';
+      const stores = [];
+      let skipped = 0;
+      parsed.rows.forEach(raw => {
+        const r = norm(raw);
+        const mc = this.normalizeMonth(r['month']) || monthCode;
+        const storeName = (r['store'] || '').trim();
+        const target = num(r['monthtarget'] || r['target']);
+        if (!mc || !storeName || !target) { skipped++; return; }
+        monthCode = mc;
+
+        // Key persons: "Sonali 50 / Shalu 50" or "Aradhya" or "Preeti & Vandana"
+        const kpRaw = (r['keyperson'] || r['keypersons'] || '').trim();
+        const kpParts = kpRaw.split(/[\/&+,]/).map(x => x.trim()).filter(Boolean);
+        const keyPersons = kpParts.map(part => {
+          const m = part.match(/^(.*?)\s+(\d{1,3})\s*%?$/);
+          const name = (m ? m[1] : part).trim();
+          return { name,
+                   user: name.toLowerCase().replace(/\s+/g, '.'),
+                   split: m ? parseInt(m[2]) : Math.round(100 / kpParts.length) };
+        });
+
+        // Store id from the leading store number ("011 New Store" -> "011")
+        const idMatch = storeName.match(/^(\d{2,4})\b/);
+        const id = idMatch ? idMatch[1] : storeName.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 8);
+        const shortName = storeName.replace(/^\d+\s*/, '') || storeName;
+
+        // Cycle targets: use given values or split the month target by days
+        const y = parseInt(monthCode.slice(0, 4)), mo = parseInt(monthCode.slice(5, 7));
+        const dim = new Date(y, mo, 0).getDate();
+        let c1 = num(r['cycle1target'] || r['cycle1']);
+        let c2 = num(r['cycle2target'] || r['cycle2']);
+        let c3 = num(r['cycle3target'] || r['cycle3']);
+        if (!c1 && !c2 && !c3) {
+          c1 = Math.round(target * 10 / dim);
+          c2 = Math.round(target * 10 / dim);
+          c3 = target - c1 - c2;
+        }
+        const pad = n => String(n).padStart(2, '0');
+        stores.push({
+          id, code: shortName.slice(0, 3), name: storeName, shortName,
+          keyPersons, monthTarget: target, incentive: num(r['incentive']),
+          userCode: '',
+          cycles: [
+            { n: 1, label: `${new Date(y, mo-1, 1).toLocaleString('en-IN',{month:'short'})} 1–10`,  start: `${monthCode}-01`, end: `${monthCode}-10`, target: c1, achieved: 0 },
+            { n: 2, label: `${new Date(y, mo-1, 1).toLocaleString('en-IN',{month:'short'})} 11–20`, start: `${monthCode}-11`, end: `${monthCode}-20`, target: c2, achieved: 0 },
+            { n: 3, label: `${new Date(y, mo-1, 1).toLocaleString('en-IN',{month:'short'})} 21–${dim}`, start: `${monthCode}-21`, end: `${monthCode}-${pad(dim)}`, target: c3, achieved: 0 }
+          ]
+        });
+      });
+
+      if (!monthCode || !stores.length) {
+        this.toast('No valid target rows found — check the Month, Store and MonthTarget columns', 'error');
+        return;
+      }
+
+      const blob = {
+        monthCode,
+        label: JC_DATA.monthLabel(monthCode),
+        totalTarget: stores.reduce((s, x) => s + x.monthTarget, 0),
+        stores,
+        updatedAt: new Date().toISOString().slice(0, 10)
+      };
+      localStorage.setItem('jc_targets_' + monthCode, JSON.stringify(blob));
+      const tPatch = {};
+      tPatch[monthCode] = blob;
+      this.syncConfig({ jc_targets: tPatch });
+
+      // Apply now if this sheet is for the current (or an already-active) month
+      const nowMonth = new Date().toISOString().slice(0, 7);
+      const appliedNow = monthCode <= nowMonth;
+      if (appliedNow) {
+        this.applyMonthlyTargets();
+        this.buildNav(); // key persons may have changed
+      }
+
+      this._pendingUpload = null;
+      const success = document.getElementById('upload-success');
+      const msg = document.getElementById('upload-success-msg');
+      const preview = document.getElementById('upload-preview');
+      if (preview) preview.classList.add('hidden');
+      if (success) success.classList.remove('hidden');
+      if (msg) msg.innerHTML =
+        `<strong>${blob.label}</strong> target sheet saved · ${stores.length} stores · ` +
+        `Total ₹${(blob.totalTarget / 100000).toFixed(1)}L` +
+        (skipped ? ` · ${skipped} rows skipped` : '') +
+        `<br>Key persons: ${stores.map(s => s.keyPersons.map(k => k.name).join(' & ') + ' (' + s.shortName + ')').join(', ')}` +
+        (appliedNow
+          ? `<br>✅ Applied now — all dashboards are on ${blob.label}`
+          : `<br>📅 Will activate automatically on 1 ${blob.label} on every device`);
+      this.toast(appliedNow ? blob.label + ' targets applied! 🎯' : blob.label + ' targets scheduled 📅', 'success');
+      return;
+    }
 
     if (parsed.format === 'exec') {
       // Format: Date, Store, Executive, Amount [, Bills, Qty]

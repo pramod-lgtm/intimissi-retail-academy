@@ -7,6 +7,7 @@
 const JC_DATA = {
   month: 'July 2026',
   monthCode: '2026-07',
+  seedMonth: '2026-07',   // the month baked into this file; other months come from uploads
   totalTarget: 4750000,
   updatedAt: '2026-07-07',
 
@@ -149,7 +150,25 @@ const JC_DATA = {
       const saved = localStorage.getItem('jc_daily_' + this.monthCode);
       if (saved) return JSON.parse(saved);
     } catch(e) {}
-    return this.daily;
+    // The baked-in daily seeds belong to the seed month only
+    return this.monthCode === this.seedMonth ? this.daily : [];
+  },
+
+  // ── APPLY AN UPLOADED MONTH (targets sheet) ────────────────
+  // blob: { monthCode, label, totalTarget, stores: [...], updatedAt }
+  applyTargets(blob) {
+    if (!blob || !blob.monthCode || !Array.isArray(blob.stores) || !blob.stores.length) return false;
+    this.monthCode = blob.monthCode;
+    this.month = blob.label || this.monthLabel(blob.monthCode);
+    this.totalTarget = blob.totalTarget || blob.stores.reduce((s, x) => s + (x.monthTarget || 0), 0);
+    this.stores = blob.stores;
+    this.updatedAt = blob.updatedAt || this.updatedAt;
+    return true;
+  },
+
+  monthLabel(code) {
+    const y = parseInt(code.slice(0, 4)), m = parseInt(code.slice(5, 7));
+    return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
   },
 
   // ── HELPER: get live store data merged with uploads ────────
