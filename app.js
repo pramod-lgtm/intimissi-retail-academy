@@ -841,10 +841,10 @@ const APP = {
             <span class="badge-pill badge-gold">Watch ≥90% to unlock quiz</span>
           </div>
         </div>
-        <div class="video-url-input">
+        ${['Super Admin','HR','Operations Head'].includes(this.state.user?.role) ? `<div class="video-url-input">
           <input type="text" id="vid-url-${brandId}" placeholder="Paste video URL (YouTube, Google Drive, MP4...) or leave blank for local file" value="${videoUrl}">
           <button class="btn btn-outline btn-sm" onclick="APP.saveVideoUrl('${brandId}')">Save URL</button>
-        </div>
+        </div>` : ''}
         <div class="video-container" id="vid-container-${brandId}">
           ${this.buildVideoEmbed(videoUrl, brand.videoFile, brandId)}
         </div>
@@ -1034,10 +1034,10 @@ const APP = {
 
       <div class="card mb-2">
         <h3 class="mb-2">🎬 Category Training Video</h3>
-        <div class="video-url-input">
+        ${['Super Admin','HR','Operations Head'].includes(this.state.user?.role) ? `<div class="video-url-input">
           <input type="text" id="vid-url-${catId}" placeholder="Paste video URL..." value="${videoUrl}">
           <button class="btn btn-outline btn-sm" onclick="APP.saveVideoUrl('${catId}')">Save URL</button>
-        </div>
+        </div>` : ''}
         <div class="video-container" id="vid-container-${catId}">
           ${this.buildVideoEmbed(videoUrl, 'By Category/' + cat.videoFile, catId)}
         </div>
