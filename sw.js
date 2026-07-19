@@ -1,4 +1,4 @@
-const CACHE = 'ira-v13';
+const CACHE = 'ira-v14';
 const CORE = [
   '/',
   '/index.html',

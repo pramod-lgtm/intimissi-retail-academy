@@ -543,6 +543,7 @@ const APP = {
     document.querySelectorAll('#bottom-nav .bn-item').forEach(b =>
       b.classList.toggle('active', b.dataset.page === page));
     this.closeDrawer();
+    this.clearYTTimers(); // stop watch-tracking tickers from a previous page
 
     const content = document.getElementById('page-content');
     const topTitle = document.getElementById('top-bar-title');
@@ -850,7 +851,7 @@ const APP = {
         </div>
         <div style="margin-top:0.75rem;display:flex;justify-content:space-between;align-items:center">
           <div class="text-sm muted">Local file: <code style="font-size:0.78rem;color:var(--gold)">${brand.videoFile}</code></div>
-          <div class="text-sm" style="color:${(prog.watchPct||0)>=90?'#66bb6a':'#888'}">Watched: <strong>${prog.watchPct||0}%</strong></div>
+          <div class="text-sm" style="color:${(prog.watchPct||0)>=90?'#66bb6a':'#888'}">Watched: <strong id="watch-pct-${brandId}">${prog.watchPct||0}%</strong></div>
         </div>
       </div>
 
@@ -898,7 +899,7 @@ const APP = {
       </div>
 
       <!-- QUIZ UNLOCK -->
-      <div class="card card-gold" style="text-align:center;padding:2rem">
+      <div class="card card-gold" id="quiz-gate-${brandId}" style="text-align:center;padding:2rem">
         ${prog.quizPassed
           ? `<div style="font-size:2rem">🏆</div><h3 class="gold mt-1">Quiz Passed! Certificate Earned.</h3>
              <div class="text-sm muted mt-1">Score: ${prog.quizScore}% on ${new Date(prog.quizDate).toLocaleDateString()}</div>
@@ -912,16 +913,27 @@ const APP = {
              <button class="btn btn-gold btn-lg mt-2" onclick="APP.navigate('quiz',{type:'brand',id:'${brandId}',name:'${brand.name}'})">📝 Start Quiz</button>`
           : `<div style="font-size:2rem">🔒</div><h3 class="mt-1">Quiz Locked</h3>
              <p class="muted mt-1">Watch at least 90% of the training video to unlock the quiz</p>
-             <button class="btn btn-outline mt-2" onclick="APP.markVideoWatched('${brandId}')">✓ Mark as Watched (Demo)</button>`}
+             ${this.isTrackableVideo(videoUrl)
+               ? `<p class="text-xs mt-1" style="color:var(--gold)">▶ Your watch progress is tracked automatically — just press play</p>`
+               : `<button class="btn btn-outline mt-2" onclick="APP.markVideoWatched('${brandId}')">✓ Mark as Watched</button>`}`}
       </div>
     </div>`;
+    this._gateCtx = Object.assign(this._gateCtx || {}, { [brandId]: { type: 'brand', name: brand.name } });
+  },
+
+  // A video is "trackable" when we can measure real watch progress
+  isTrackableVideo(url) {
+    return !!url && (url.includes('youtube.com') || url.includes('youtu.be') || /\.(mp4|webm|mov)$/i.test(url));
   },
 
   buildVideoEmbed(url, localFile, moduleId) {
     if (url) {
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
         const vid = url.match(/(?:v=|youtu\.be\/)([^&\s]+)/)?.[1];
-        if (vid) return `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${vid}?enablejsapi=1" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>`;
+        if (vid) {
+          setTimeout(() => APP.initYTTracking(moduleId), 100);
+          return `<iframe id="yt-${moduleId}" width="100%" height="100%" src="https://www.youtube.com/embed/${vid}?enablejsapi=1&origin=${encodeURIComponent(location.origin)}" frameborder="0" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>`;
+        }
       }
       if (url.includes('drive.google.com')) {
         const fid = url.match(/\/d\/([^/]+)/)?.[1];
@@ -962,24 +974,113 @@ const APP = {
     this.toast('Video URL saved!', 'success');
   },
 
-  onVideoProgress(vid, moduleId) {
-    if (!vid.duration) return;
-    const pct = Math.round((vid.currentTime / vid.duration) * 100);
+  // Shared by the <video> tag path and the YouTube tracker
+  updateWatchPct(moduleId, pct) {
     const prog = this.storage.get('progress', {});
-    if (!prog[this.state.user.id]) prog[this.state.user.id] = {};
-    if (!prog[this.state.user.id][moduleId]) prog[this.state.user.id][moduleId] = {};
-    const current = prog[this.state.user.id][moduleId].watchPct || 0;
+    const uid = this.state.user.id;
+    if (!prog[uid]) prog[uid] = {};
+    if (!prog[uid][moduleId]) prog[uid][moduleId] = {};
+    const current = prog[uid][moduleId].watchPct || 0;
     if (pct > current) {
-      prog[this.state.user.id][moduleId].watchPct = pct;
+      prog[uid][moduleId].watchPct = pct;
       this.storage.set('progress', prog);
       if (pct >= 90 && current < 90) {
-        this.addXP(this.state.user.id, 50, 'Video Completed');
+        this.addXP(uid, 50, 'Video Completed');
         this.toast('🎉 Video completed! Quiz unlocked. +50 XP', 'success');
       }
     }
   },
 
+  // Live-update the "Watched: X%" label and swap the quiz gate at 90%
+  updateWatchUI(moduleId, pct) {
+    const stored = ((this.storage.get('progress', {})[this.state.user.id] || {})[moduleId] || {}).watchPct || 0;
+    const shown = Math.max(pct, stored);
+    const el = document.getElementById('watch-pct-' + moduleId);
+    if (el) { el.textContent = shown + '%'; if (el.parentElement) el.parentElement.style.color = shown >= 90 ? '#66bb6a' : '#888'; }
+    if (shown >= 90) this.refreshQuizGate(moduleId);
+  },
+
+  refreshQuizGate(moduleId) {
+    const gate = document.getElementById('quiz-gate-' + moduleId);
+    const ctx = (this._gateCtx || {})[moduleId];
+    if (!gate || !ctx || gate.dataset.unlocked) return;
+    const prog = (this.storage.get('progress', {})[this.state.user.id] || {})[moduleId] || {};
+    if (prog.quizPassed) return;
+    gate.dataset.unlocked = '1';
+    gate.innerHTML = `<div style="font-size:2rem">✅</div><h3 class="gold mt-1">Video Completed! Quiz Unlocked.</h3>
+      <button class="btn btn-gold btn-lg mt-2" onclick="APP.navigate('quiz',{type:'${ctx.type}',id:'${moduleId}',name:'${(ctx.name||'').replace(/'/g, "\\'")}'})">📝 Start Quiz</button>`;
+  },
+
+  onVideoProgress(vid, moduleId) {
+    if (!vid.duration) return;
+    const pct = Math.round((vid.currentTime / vid.duration) * 100);
+    this.updateWatchPct(moduleId, pct);
+    this.updateWatchUI(moduleId, pct);
+  },
+
   onVideoEnd(moduleId) { this.markVideoWatched(moduleId); },
+
+  // ── YOUTUBE WATCH TRACKING ───────────────────────────────
+  // Loads the YouTube IFrame API once and accumulates REAL watch time
+  // (2s ticks only while playing — skipping ahead doesn't count), so the
+  // quiz unlocks only after genuinely watching 90% of the video.
+  loadYTApi() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (this._ytApiPromise) return this._ytApiPromise;
+    this._ytApiPromise = new Promise(resolve => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (prev) prev(); resolve(); };
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.onerror = () => resolve(); // offline: fail silent, player still works
+      document.head.appendChild(s);
+    });
+    return this._ytApiPromise;
+  },
+
+  clearYTTimers() {
+    Object.values(this._ytTimers || {}).forEach(t => clearInterval(t));
+    this._ytTimers = {};
+  },
+
+  initYTTracking(moduleId) {
+    if (!document.getElementById('yt-' + moduleId)) return;
+    const self = this;
+    this.loadYTApi().then(() => {
+      if (!window.YT || !window.YT.Player) return;
+      if (!document.getElementById('yt-' + moduleId)) return; // navigated away
+      new YT.Player('yt-' + moduleId, {
+        events: {
+          onReady(e) {
+            // Seed the accumulator from saved progress so watching resumes fairly
+            const dur = e.target.getDuration() || 0;
+            const stored = ((self.storage.get('progress', {})[self.state.user.id] || {})[moduleId] || {}).watchPct || 0;
+            self._ytAcc = self._ytAcc || {};
+            self._ytAcc[moduleId] = dur * stored / 100;
+          },
+          onStateChange(e) {
+            self._ytTimers = self._ytTimers || {};
+            clearInterval(self._ytTimers[moduleId]);
+            if (e.data === YT.PlayerState.ENDED) {
+              self.updateWatchPct(moduleId, 100);
+              self.updateWatchUI(moduleId, 100);
+              return;
+            }
+            if (e.data !== YT.PlayerState.PLAYING) return;
+            const dur = e.target.getDuration() || 0;
+            if (!dur) return;
+            self._ytAcc = self._ytAcc || {};
+            self._ytTimers[moduleId] = setInterval(() => {
+              self._ytAcc[moduleId] = Math.min(dur, (self._ytAcc[moduleId] || 0) + 2);
+              const pct = Math.min(100, Math.round(self._ytAcc[moduleId] / dur * 100));
+              self.updateWatchPct(moduleId, pct);
+              self.updateWatchUI(moduleId, pct);
+            }, 2000);
+          }
+        }
+      });
+    });
+  },
 
   markVideoWatched(moduleId) {
     const prog = this.storage.get('progress', {});
@@ -1043,7 +1144,7 @@ const APP = {
         </div>
         <div style="margin-top:0.75rem;display:flex;justify-content:space-between;align-items:center">
           <div class="text-sm muted">File: <code style="font-size:0.78rem;color:var(--gold)">${cat.videoFile}</code></div>
-          <div class="text-sm" style="color:${(prog.watchPct||0)>=90?'#66bb6a':'#888'}">Watched: <strong>${prog.watchPct||0}%</strong></div>
+          <div class="text-sm" style="color:${(prog.watchPct||0)>=90?'#66bb6a':'#888'}">Watched: <strong id="watch-pct-${catId}">${prog.watchPct||0}%</strong></div>
         </div>
       </div>
 
@@ -1058,7 +1159,7 @@ const APP = {
         </div>
       </div>
 
-      <div class="card card-gold" style="text-align:center;padding:2rem">
+      <div class="card card-gold" id="quiz-gate-${catId}" style="text-align:center;padding:2rem">
         ${prog.quizPassed
           ? `<div style="font-size:2rem">🏆</div><h3 class="gold mt-1">Quiz Passed! Certificate Earned.</h3>
              <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1.25rem;flex-wrap:wrap">
@@ -1069,9 +1170,12 @@ const APP = {
           ? `<div style="font-size:2rem">✅</div><h3 class="gold mt-1">Quiz Unlocked!</h3>
              <button class="btn btn-gold btn-lg mt-2" onclick="APP.navigate('quiz',{type:'category',id:'${catId}',name:'${cat.name}'})">📝 Start Quiz</button>`
           : `<div style="font-size:2rem">🔒</div><h3 class="mt-1">Watch Video to Unlock Quiz</h3>
-             <button class="btn btn-outline mt-2" onclick="APP.markVideoWatched('${catId}')">✓ Mark as Watched (Demo)</button>`}
+             ${this.isTrackableVideo(videoUrl)
+               ? `<p class="text-xs mt-1" style="color:var(--gold)">▶ Your watch progress is tracked automatically — just press play</p>`
+               : `<button class="btn btn-outline mt-2" onclick="APP.markVideoWatched('${catId}')">✓ Mark as Watched</button>`}`}
       </div>
     </div>`;
+    this._gateCtx = Object.assign(this._gateCtx || {}, { [catId]: { type: 'category', name: cat.name } });
   },
 
   // ── SELLING SKILLS ───────────────────────────────────────
