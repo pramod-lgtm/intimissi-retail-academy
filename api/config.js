@@ -50,7 +50,7 @@ function mergePatch(cfg, patch) {
       cfg.rpims_rules = patch.rpims_rules;
     }
   }
-  ['rpims_ledger', 'rpims_redemptions'].forEach(function(k) {
+  ['rpims_ledger', 'rpims_redemptions', 'rpims_checklists'].forEach(function(k) {
     if (Array.isArray(patch[k])) {
       if (!Array.isArray(cfg[k])) cfg[k] = [];
       var seen = {};

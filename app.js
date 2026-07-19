@@ -126,6 +126,13 @@ const APP = {
           APP.storage.set('rpims_ledger', local);
         }
         if (Array.isArray(cfg.rpims_audit)) APP.storage.set('rpims_audit', cfg.rpims_audit);
+        if (Array.isArray(cfg.rpims_checklists)) {
+          var lc = APP.storage.get('rpims_checklists', []);
+          var cseen = {};
+          lc.forEach(function(t) { cseen[t.id] = true; });
+          cfg.rpims_checklists.forEach(function(t) { if (t && t.id && !cseen[t.id]) { lc.push(t); cseen[t.id] = true; } });
+          APP.storage.set('rpims_checklists', lc);
+        }
         if (Array.isArray(cfg.rpims_redemptions)) {
           var lr = APP.storage.get('rpims_redemptions', []);
           var rseen = {};
@@ -489,6 +496,7 @@ const APP = {
         <div class="nav-section-title">Management</div>
         <div class="nav-item" onclick="APP.navigate('jc-performance')"><span class="icon">🎯</span><span>JC Cycle Tracker</span></div>
         <div class="nav-item" onclick="APP.navigate('manager-dashboard')"><span class="icon">📊</span><span>Team Dashboard</span></div>
+        <div class="nav-item" onclick="APP.navigate('daily-checklist')"><span class="icon">✅</span><span>Daily Checklist</span></div>
         <div class="nav-item" onclick="APP.navigate('credit-console')"><span class="icon">⭐</span><span>Credit Console</span></div>
         <div class="nav-item" onclick="APP.navigate('store-analytics')"><span class="icon">🏪</span><span>Store Analytics</span></div>
       </div>` : '';
@@ -573,6 +581,7 @@ const APP = {
           case 'jc-performance':   topTitle.textContent = '🎯 JC Cycle Tracker';      this.renderJCPerformance(content); break;
           case 'wallet':          topTitle.textContent = '💳 My Retail Wallet';      this.renderWallet(content); break;
           case 'credit-console':  topTitle.textContent = '⭐ Credit Console';         this.renderCreditConsole(content); break;
+          case 'daily-checklist': topTitle.textContent = '✅ Daily Checklist';        this.renderDailyChecklist(content); break;
           case 'rule-engine':     topTitle.textContent = '🧮 Rule Engine';           this.renderRuleEngine(content); break;
           case 'incentive-engine':topTitle.textContent = '💰 Incentive Engine';      this.renderIncentiveEngine(content); break;
           case 'data-upload':      topTitle.textContent = '📤 Upload Sales Data';     this.renderDataUpload(content); break;
@@ -3008,6 +3017,177 @@ const APP = {
     this.navigate('credit-console');
   },
 
+  // ── DAILY COMPLIANCE / VM CHECKLIST (manager / admin) ────
+  renderDailyChecklist(el) {
+    const me = this.getUser();
+    if (!['Super Admin','HR','Operations Head','Area Manager','Store Manager'].includes(me.role)) {
+      el.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><h3>Managers only</h3></div>'; return;
+    }
+    const rules = this.getRules();
+    const isAdmin = ['Super Admin','HR','Operations Head','Area Manager'].includes(me.role);
+    let stores = typeof JC_DATA !== 'undefined' ? JC_DATA.stores : [];
+    if (!isAdmin && me.storeId) stores = stores.filter(s => s.id === String(me.storeId).slice(0, 3));
+    const today = new Date().toISOString().slice(0, 10);
+    if (!this._chkStoreId || !stores.find(s => s.id === this._chkStoreId)) this._chkStoreId = stores[0]?.id || '';
+    const store = stores.find(s => s.id === this._chkStoreId);
+
+    const existing = this.storage.get('rpims_checklists', [])
+      .find(c => c.storeId === this._chkStoreId && c.date === today);
+
+    el.innerHTML = `<div class="fade-in">
+      <div class="section-header"><h3>✅ Daily Compliance & VM Checklist</h3><span class="muted text-xs">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</span></div>
+      <div class="text-xs muted mb-2">One submission per store per day. Done/Missed feeds Operational Excellence credits straight to the store's key person${store && store.keyPersons.length>1?'s':''}.</div>
+
+      <div class="card mb-2">
+        <label class="text-xs muted">Store</label>
+        <select class="input-select" style="width:100%;margin-top:0.25rem" onchange="APP._chkStoreId=this.value;APP.navigate('daily-checklist')">
+          ${stores.map(s => `<option value="${s.id}" ${s.id===this._chkStoreId?'selected':''}>${s.name} — ${s.keyPersons.map(k=>k.name).join(' & ')}</option>`).join('')}
+        </select>
+      </div>
+
+      ${existing ? `
+      <div class="card" style="border-left:4px solid #4caf50">
+        <div class="font-bold" style="color:#4caf50">✅ Already submitted today</div>
+        <div class="text-sm muted mt-1">By ${existing.byName} · ${Object.values(existing.results).filter(Boolean).length}/${rules.checklist.length} items done${typeof existing.aiScore === 'number' ? ` · AI VM score ${existing.aiScore}` : ''}</div>
+        <div class="mt-2">${rules.checklist.map(item => `<div class="chk-row-done"><span>${existing.results[item.code] ? '✅' : '❌'}</span><span class="text-sm">${item.label}</span></div>`).join('')}</div>
+      </div>` : `
+
+      <!-- AI VM PHOTO CHECK -->
+      <div class="card mb-2 sim-card">
+        <div class="card-title">🤖 AI VM Photo Verification</div>
+        <div class="text-xs muted mt-1 mb-2">Upload today's display photo — AI checks display, promo, colour blocking, cleanliness and mannequins, then sets the VM item below automatically. You can override before submitting.</div>
+        <input type="file" id="vm-photo-input" accept="image/*" capture="environment" style="display:none" onchange="APP.handleVMPhoto(this)">
+        <button class="btn btn-gold btn-sm" onclick="document.getElementById('vm-photo-input').click()">📷 Upload Display Photo</button>
+        <div id="vm-ai-result" class="mt-2"></div>
+      </div>
+
+      <!-- CHECKLIST -->
+      <div class="card">
+        ${rules.checklist.map(item => {
+          const okC = rules.credits.find(c => c.code === item.okCode);
+          const missC = rules.credits.find(c => c.code === item.missCode);
+          return `<div class="chk-row" data-chk="${item.code}" data-state="done">
+            <div class="chk-label">
+              <div class="text-sm" style="font-weight:600">${item.label}</div>
+              <div class="text-xs muted">${okC ? `Done +${okC.amt}` : ''}${okC && missC ? ' · ' : ''}${missC ? `Missed ${missC.amt}` : ''}</div>
+            </div>
+            <div class="chk-toggle">
+              <button class="chk-btn chk-done active" onclick="APP.setChkState(this,'done')">✓ Done</button>
+              <button class="chk-btn chk-miss" onclick="APP.setChkState(this,'miss')">✗ Missed</button>
+            </div>
+          </div>`;
+        }).join('')}
+        <button class="btn btn-gold btn-full btn-lg mt-2" onclick="APP.submitChecklist()">💾 Submit Checklist & Award Credits</button>
+      </div>`}
+    </div>`;
+  },
+
+  setChkState(btn, state) {
+    const row = btn.closest('.chk-row');
+    row.dataset.state = state;
+    row.querySelector('.chk-done').classList.toggle('active', state === 'done');
+    row.querySelector('.chk-miss').classList.toggle('active', state === 'miss');
+  },
+
+  submitChecklist() {
+    const me = this.getUser();
+    const rules = this.getRules();
+    const store = JC_DATA.stores.find(s => s.id === this._chkStoreId);
+    if (!store) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (this.storage.get('rpims_checklists', []).find(c => c.storeId === store.id && c.date === today)) {
+      this.toast('Already submitted for this store today', 'error'); return;
+    }
+
+    // Credits go to the store's key person user(s)
+    const users = this.storage.get('users', []);
+    const kpUsers = store.keyPersons.map(kp =>
+      users.find(u => (kp.user && (u.username||'').toLowerCase() === kp.user) ||
+                      u.name.split(' ')[0].toLowerCase() === kp.name.toLowerCase())
+    ).filter(Boolean);
+
+    const results = {};
+    let plus = 0, minus = 0;
+    document.querySelectorAll('.chk-row').forEach(row => {
+      const item = rules.checklist.find(i => i.code === row.dataset.chk);
+      if (!item) return;
+      const done = row.dataset.state === 'done';
+      results[item.code] = done;
+      const code = done ? item.okCode : item.missCode;
+      if (!code) return;
+      const cat = rules.credits.find(c => c.code === code);
+      if (!cat) return;
+      kpUsers.forEach(u => this.addCredit(u.id, code, store.shortName + ' checklist', true));
+      if (cat.amt >= 0) plus += cat.amt * kpUsers.length; else minus += Math.abs(cat.amt) * kpUsers.length;
+    });
+
+    const rec = { id: 'ck_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      storeId: store.id, date: today, by: me.id, byName: me.name, results,
+      aiScore: this._lastAIScore ?? null };
+    this._lastAIScore = null;
+    const list = this.storage.get('rpims_checklists', []);
+    list.push(rec);
+    this.storage.set('rpims_checklists', list);
+    this.syncConfig({ rpims_checklists: [rec] });
+
+    this.toast(kpUsers.length
+      ? `Checklist saved · +${plus}${minus ? ` / −${minus}` : ''} credits to ${kpUsers.map(u=>u.name.split(' ')[0]).join(' & ')}`
+      : 'Checklist saved (no key person user matched — no credits awarded)', 'success');
+    this.navigate('daily-checklist');
+  },
+
+  // AI photo verification: resize client-side, POST to /api/vm-verify
+  handleVMPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const out = document.getElementById('vm-ai-result');
+    out.innerHTML = '<div class="muted text-sm">🤖 Analysing photo…</div>';
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1024;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+      const store = JC_DATA.stores.find(s => s.id === this._chkStoreId);
+      fetch('/api/vm-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: b64, mediaType: 'image/jpeg', storeName: store ? store.name : '' })
+      }).then(r => r.json()).then(data => {
+        if (!data.ok) {
+          out.innerHTML = `<div class="text-sm" style="color:#ffb74d">⚠️ ${data.error || 'AI verification unavailable'} — mark the VM item manually.</div>`;
+          return;
+        }
+        const r2 = data.result;
+        this._lastAIScore = r2.score;
+        const checks = [
+          ['Display', r2.display_correct], ['Promo', r2.promo_visible], ['Colour blocking', r2.color_blocking],
+          ['Cleanliness', r2.cleanliness], ['Mannequins', r2.mannequin_styling]
+        ];
+        out.innerHTML = `<div class="sim-result-box">
+          <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+            <div class="sim-num" style="color:${r2.pass?'#4caf50':'#ef5350'}">${r2.score}/100 ${r2.pass?'PASS ✅':'NEEDS WORK ❌'}</div>
+            <div class="text-xs">${checks.map(([l,v]) => `<span style="margin-right:0.6rem">${v?'✅':'❌'} ${l}</span>`).join('')}</div>
+          </div>
+          <div class="text-sm muted mt-1">${r2.feedback}</div>
+          <div class="text-xs muted mt-1">VM checklist item set to ${r2.pass ? 'Done' : 'Missed'} — override below if you disagree.</div>
+        </div>`;
+        const vmRow = document.querySelector('.chk-row[data-chk=vm]');
+        if (vmRow) this.setChkState(vmRow.querySelector(r2.pass ? '.chk-done' : '.chk-miss'), r2.pass ? 'done' : 'miss');
+        const photoRow = document.querySelector('.chk-row[data-chk=display_photo]');
+        if (photoRow) this.setChkState(photoRow.querySelector('.chk-done'), 'done');
+      }).catch(() => {
+        out.innerHTML = '<div class="text-sm" style="color:#ffb74d">⚠️ Could not reach the AI service — mark the VM item manually.</div>';
+      });
+    };
+    img.src = url;
+  },
+
   // ── RULE ENGINE (admin) ──────────────────────────────────
   renderRuleEngine(el) {
     if (!['Super Admin','HR','Operations Head'].includes(this.state.user?.role)) {
@@ -3096,18 +3276,12 @@ const APP = {
       </div>
 
       <!-- BRAND RULES -->
-      <div class="section-header mt-2"><h3>🏷️ Brand Incentive Rules</h3></div>
-      <div class="card">
-        ${Object.keys(r.brandRules).map(b => {
-          const br = r.brandRules[b];
-          return `<div class="brand-rule-row">
-            <strong style="min-width:90px">${b}</strong>
-            ${br.mode==='flat'
-              ? `<span class="muted text-sm">Flat</span> <input type="number" step="0.01" class="rule-input brand-flat" data-brand="${b}" value="${br.pct}" style="width:80px"><span>% of brand sales</span>`
-              : `<span class="muted text-sm">Slab-based (${br.slabs.length} tiers) — edit in JSON below</span>`}
-          </div>`;
-        }).join('')}
-        <div class="text-xs muted mt-1">Flat brands earn a % of all their sales. Slab brands (e.g. Fablush) pay by achievement tier. Brand-split sales upload enables per-brand payout automatically.</div>
+      <div class="section-header mt-2"><h3>🏷️ Brand Incentive Rules</h3>
+        <button class="btn btn-outline btn-sm" onclick="APP.addBrandRule()">+ Add Brand</button>
+      </div>
+      <div class="card" id="brand-rules-wrap">
+        ${Object.keys(r.brandRules).map(b => this.brandBlockHTML(b, r.brandRules[b])).join('')}
+        <div class="text-xs muted mt-1">Flat brands earn a % of all their sales. Slab brands pay a % by achievement tier (e.g. Fablush: 100%→2%, 90%→1.5%…). Every value here is editable; Save applies to payouts immediately.</div>
       </div>
 
       <!-- AUDIT TRAIL -->
@@ -3118,6 +3292,53 @@ const APP = {
         : `<div class="empty-state"><p class="muted">No rule changes yet. Every future edit is logged here.</p></div>`}
       </div>
     </div>`;
+  },
+
+  // One editable brand block: mode select toggles flat/slab sub-editors
+  brandBlockHTML(name, br) {
+    const slabs = br.mode === 'slab' && br.slabs ? br.slabs : [{ min: 100, pct: 1.0 }];
+    return `<div class="brand-block" data-brand="${name}">
+      <div class="brand-rule-row">
+        <strong style="min-width:90px">${name}</strong>
+        <select class="rule-input brand-mode" onchange="const b=this.closest('.brand-block');b.querySelector('.brand-flat-wrap').style.display=this.value==='flat'?'':'none';b.querySelector('.brand-slab-wrap').style.display=this.value==='slab'?'':'none';">
+          <option value="flat" ${br.mode==='flat'?'selected':''}>Flat % of sales</option>
+          <option value="slab" ${br.mode==='slab'?'selected':''}>Slabs by achievement</option>
+        </select>
+        <span class="brand-flat-wrap" style="${br.mode==='flat'?'':'display:none'}">
+          <input type="number" step="0.01" class="rule-input brand-flat" value="${br.pct ?? 0.5}" style="width:80px"> <span class="text-xs muted">% of brand sales</span>
+        </span>
+        <button class="btn btn-ghost btn-xs" style="margin-left:auto" onclick="this.closest('.brand-block').remove()">✕ Remove</button>
+      </div>
+      <div class="brand-slab-wrap" style="padding-left:1rem;${br.mode==='slab'?'':'display:none'}">
+        <div class="brand-slab-list">
+          ${slabs.map(s => `<div class="slab-row" data-bslab="1">
+            <span>≥</span><input type="number" class="rule-input" data-f="min" value="${s.min}" style="width:70px"><span>% ach →</span>
+            <input type="number" step="0.01" class="rule-input" data-f="pct" value="${s.pct}" style="width:80px"><span>%</span>
+            <button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>
+          </div>`).join('')}
+        </div>
+        <button class="btn btn-outline btn-xs" onclick="APP.addBrandSlabRow(this)">+ Add tier</button>
+      </div>
+    </div>`;
+  },
+
+  addBrandRule() {
+    const name = (prompt('Brand name (e.g. Fablush):') || '').trim();
+    if (!name) return;
+    if (document.querySelector(`.brand-block[data-brand="${name}"]`)) { this.toast('Brand already exists', 'error'); return; }
+    const wrap = document.getElementById('brand-rules-wrap');
+    const div = document.createElement('div');
+    div.innerHTML = this.brandBlockHTML(name, { mode: 'flat', pct: 0.5 });
+    wrap.insertBefore(div.firstElementChild, wrap.lastElementChild);
+    this.toast(`${name} added — set its rule and Save`, 'success');
+  },
+
+  addBrandSlabRow(btn) {
+    const list = btn.closest('.brand-slab-wrap').querySelector('.brand-slab-list');
+    const div = document.createElement('div');
+    div.className = 'slab-row'; div.setAttribute('data-bslab', '1');
+    div.innerHTML = `<span>≥</span><input type="number" class="rule-input" data-f="min" value="100" style="width:70px"><span>% ach →</span><input type="number" step="0.01" class="rule-input" data-f="pct" value="1.0" style="width:80px"><span>%</span><button class="btn btn-ghost btn-xs" onclick="this.closest('.slab-row').remove()">✕</button>`;
+    list.appendChild(div);
   },
 
   addSlabRow(key) {
@@ -3165,8 +3386,22 @@ const APP = {
     document.querySelectorAll('.ptarget-input').forEach(i => { r.pillarTargets[i.dataset.p] = parseInt(i.value)||0; });
     // Credit values
     document.querySelectorAll('.credit-input').forEach(i => { const c = r.credits.find(x=>x.code===i.dataset.code); if (c) c.amt = parseInt(i.value)||0; });
-    // Brand flat %
-    document.querySelectorAll('.brand-flat').forEach(i => { const b = r.brandRules[i.dataset.brand]; if (b) b.pct = parseFloat(i.value)||0; });
+    // Brand rules — rebuilt from the editor (add/remove/mode/values)
+    const newBrands = {};
+    document.querySelectorAll('.brand-block').forEach(b => {
+      const name = b.dataset.brand;
+      const mode = b.querySelector('.brand-mode').value;
+      if (mode === 'flat') {
+        newBrands[name] = { mode: 'flat', pct: parseFloat(b.querySelector('.brand-flat').value) || 0 };
+      } else {
+        const slabs = [...b.querySelectorAll('[data-bslab]')].map(row => ({
+          min: parseFloat(row.querySelector('[data-f=min]').value) || 0,
+          pct: parseFloat(row.querySelector('[data-f=pct]').value) || 0
+        }));
+        newBrands[name] = { mode: 'slab', slabs };
+      }
+    });
+    r.brandRules = newBrands;
 
     this.saveRules(r, 'Rule engine edited via admin panel');
     this.toast(`Rules saved — now version ${r.version}. Synced to all devices.`, 'success');

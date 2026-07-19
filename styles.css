@@ -674,6 +674,17 @@ body {
 .btn-xs { padding: 0.2rem 0.5rem; font-size: 0.72rem; }
 .text-danger { color: #ef5350; }
 
+.chk-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--black4); flex-wrap: wrap; }
+.chk-row:last-of-type { border-bottom: none; }
+.chk-label { flex: 1; min-width: 180px; }
+.chk-toggle { display: flex; gap: 0.4rem; flex-shrink: 0; }
+.chk-btn { padding: 0.4rem 0.9rem; border-radius: 20px; border: 1px solid var(--black4); background: var(--black3); color: #888; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: var(--trans); }
+.chk-btn.chk-done.active { background: rgba(76,175,80,0.18); border-color: #4caf50; color: #4caf50; }
+.chk-btn.chk-miss.active { background: rgba(239,83,80,0.18); border-color: #ef5350; color: #ef5350; }
+.chk-row-done { display: flex; gap: 0.5rem; align-items: center; padding: 0.25rem 0; }
+.brand-block { border-bottom: 1px solid var(--black4); padding: 0.5rem 0; }
+.brand-block:last-of-type { border-bottom: none; }
+
 .sim-card { border: 1px solid var(--gold3); }
 .sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
 .sim-result-box { background: var(--black3); border-radius: var(--radius); padding: 1rem; }

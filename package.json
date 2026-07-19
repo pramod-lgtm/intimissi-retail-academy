@@ -1,0 +1,7 @@
+{
+  "name": "intimissi-retail-academy",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0"
+  }
+}

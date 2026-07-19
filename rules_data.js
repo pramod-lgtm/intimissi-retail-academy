@@ -63,6 +63,8 @@ const DEFAULT_RULES = {
     { code: 'premium_product', label: 'Premium Product Sold',    amt:  40,  pillar: 'brand' },
     { code: 'brand_focus',     label: 'Brand Focus Push',        amt:  50,  pillar: 'brand' },
     { code: 'morning_brief',   label: 'Morning Brief Attended',  amt:  20,  pillar: 'learning' },
+    { code: 'store_clean',     label: 'Store Clean & Tidy',      amt:  40,  pillar: 'ops' },
+    { code: 'price_tags',      label: 'Price Tags Correct',      amt:  30,  pillar: 'ops' },
     { code: 'helping_hand',    label: 'Helped a Colleague',      amt:  40,  pillar: 'behaviour' },
     { code: 'cross_support',   label: 'Cross-Team Support',      amt:  50,  pillar: 'behaviour' },
     // Deductions
@@ -84,6 +86,19 @@ const DEFAULT_RULES = {
     modulePassed:    { amt: 40, pillar: 'learning', label: 'Module Passed' },
     applauseReceived:{ amt: 20, pillar: 'behaviour', label: 'Applause Received' }
   },
+
+  // Daily manager checklist — each item maps Done/Missed to credit codes above
+  checklist: [
+    { code: 'display_photo', label: 'Morning Display Photo (before 12 PM)', okCode: 'display_photo', missCode: 'no_display' },
+    { code: 'vm',            label: 'VM as per guideline',                  okCode: 'vm_approved',   missCode: 'wrong_vm' },
+    { code: 'open_check',    label: 'Opening Checklist completed',          okCode: 'checklist',     missCode: null },
+    { code: 'close_check',   label: 'Closing Checklist completed',          okCode: 'checklist',     missCode: null },
+    { code: 'promo',         label: 'Promo executed on time',               okCode: 'promo_ontime',  missCode: null },
+    { code: 'brief',         label: 'Morning Brief conducted',              okCode: 'morning_brief', missCode: 'no_brief' },
+    { code: 'clean',         label: 'Store clean & tidy',                   okCode: 'store_clean',   missCode: null },
+    { code: 'tags',          label: 'Price tags correct',                   okCode: 'price_tags',    missCode: null },
+    { code: 'grooming',      label: 'Team grooming proper',                 okCode: null,            missCode: 'grooming' }
+  ],
 
   // Wallet milestones (lifetime credits)
   milestones: [
