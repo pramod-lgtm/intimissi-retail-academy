@@ -190,6 +190,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_mrw3tkn5xor1",
+      "userId": "sp_aradhya",
+      "code": "module_pass",
+      "label": "Module Passed — C9",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_aradhya",
+      "byName": "Aradhya",
+      "note": ""
     }
   ]
 }
