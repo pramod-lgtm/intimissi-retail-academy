@@ -463,6 +463,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_mrw5mik64d61",
+      "userId": "sp_aradhya",
+      "code": "module_pass",
+      "label": "Module Passed — Types of Swimwear",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_aradhya",
+      "byName": "Aradhya",
+      "note": ""
     }
   ]
 }
