@@ -502,6 +502,19 @@
       "by": "sp_aradhya",
       "byName": "Aradhya",
       "note": ""
+    },
+    {
+      "id": "cr_mrw5roan6gyx",
+      "userId": "sp_aradhya",
+      "code": "module_pass",
+      "label": "Module Passed — Greeting & Need Analysis",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_aradhya",
+      "byName": "Aradhya",
+      "note": ""
     }
   ]
 }
