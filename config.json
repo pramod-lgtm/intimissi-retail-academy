@@ -606,6 +606,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_mrw6afmek1a8",
+      "userId": "sp_shilat",
+      "code": "module_pass",
+      "label": "Module Passed — IMP Accessories",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_shilat",
+      "byName": "Shilat",
+      "note": ""
     }
   ]
 }
