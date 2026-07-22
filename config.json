@@ -489,6 +489,19 @@
       "by": "sp_aradhya",
       "byName": "Aradhya",
       "note": ""
+    },
+    {
+      "id": "cr_mrw5px0fxbjo",
+      "userId": "sp_aradhya",
+      "code": "module_pass",
+      "label": "Module Passed — IMP Accessories",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_aradhya",
+      "byName": "Aradhya",
+      "note": ""
     }
   ]
 }
