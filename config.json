@@ -150,5 +150,20 @@
       },
       "updatedAt": "2026-07-07"
     }
-  }
+  },
+  "rpims_ledger": [
+    {
+      "id": "cr_mrw3c2oawknu",
+      "userId": "sp_sonali",
+      "code": "module_pass",
+      "label": "Module Passed — Types of Bras",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_sonali",
+      "byName": "Sonali",
+      "note": ""
+    }
+  ]
 }
