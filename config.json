@@ -346,6 +346,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_mrw56ewbpl99",
+      "userId": "sp_aradhya",
+      "code": "module_pass",
+      "label": "Module Passed — WECOAL",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-22",
+      "month": "2026-07",
+      "by": "sp_aradhya",
+      "byName": "Aradhya",
+      "note": ""
     }
   ]
 }
