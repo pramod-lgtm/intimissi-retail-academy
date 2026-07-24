@@ -905,6 +905,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_mrz3djjsir3s",
+      "userId": "sp_sonali",
+      "code": "module_pass",
+      "label": "Module Passed — Zewami",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_sonali",
+      "byName": "Sonali",
+      "note": ""
     }
   ]
 }
