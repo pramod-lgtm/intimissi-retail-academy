@@ -710,6 +710,19 @@
       "by": "sp_sonali",
       "byName": "Sonali",
       "note": ""
+    },
+    {
+      "id": "cr_mryxm7knijkc",
+      "userId": "sp_reena",
+      "code": "module_pass",
+      "label": "Module Passed — Enamor",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_reena",
+      "byName": "Reena",
+      "note": ""
     }
   ]
 }
