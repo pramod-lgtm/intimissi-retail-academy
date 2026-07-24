@@ -814,6 +814,19 @@
       "by": "sp_reena",
       "byName": "Reena",
       "note": ""
+    },
+    {
+      "id": "cr_mrz1q5ejs43m",
+      "userId": "sp_nisha_kn",
+      "code": "module_pass",
+      "label": "Module Passed — Zewami",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_nisha_kn",
+      "byName": "Nisha Kn",
+      "note": ""
     }
   ]
 }
