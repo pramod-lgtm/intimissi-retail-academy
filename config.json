@@ -879,6 +879,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_mrz37cs24xqd",
+      "userId": "sp_sonali",
+      "code": "module_pass",
+      "label": "Module Passed — Triumph",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_sonali",
+      "byName": "Sonali",
+      "note": ""
     }
   ]
 }
