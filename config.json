@@ -658,6 +658,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_mryxacv6gfpu",
+      "userId": "sp_reena",
+      "code": "module_pass",
+      "label": "Module Passed — C9",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_reena",
+      "byName": "Reena",
+      "note": ""
     }
   ]
 }
