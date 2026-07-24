@@ -736,6 +736,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_mryxpo7vbixr",
+      "userId": "sp_nisha_kn",
+      "code": "module_pass",
+      "label": "Module Passed — Enamor",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_nisha_kn",
+      "byName": "Nisha Kn",
+      "note": ""
     }
   ]
 }
