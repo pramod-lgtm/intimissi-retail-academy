@@ -619,6 +619,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_mrywnz1dmxoq",
+      "userId": "sp_reena",
+      "code": "module_pass",
+      "label": "Module Passed — Amante",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_reena",
+      "byName": "Reena",
+      "note": ""
     }
   ]
 }
