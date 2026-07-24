@@ -918,6 +918,19 @@
       "by": "sp_sonali",
       "byName": "Sonali",
       "note": ""
+    },
+    {
+      "id": "cr_mrz5sja3fj6y",
+      "userId": "sp_nisha_kn",
+      "code": "module_pass",
+      "label": "Module Passed — IMP",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-24",
+      "month": "2026-07",
+      "by": "sp_nisha_kn",
+      "byName": "Nisha Kn",
+      "note": ""
     }
   ]
 }
