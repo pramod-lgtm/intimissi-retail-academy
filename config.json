@@ -972,6 +972,19 @@
       "by": "sp_rishabh",
       "byName": "Rishabh",
       "note": ""
+    },
+    {
+      "id": "cr_ms02kki0ypxn",
+      "userId": "sp_shaalu",
+      "code": "module_pass",
+      "label": "Module Passed — Jockey",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_shaalu",
+      "byName": "Shaalu",
+      "note": ""
     }
   ]
 }
