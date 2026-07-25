@@ -1117,6 +1117,19 @@
       "by": "sp_annu_mgn",
       "byName": "Annu Mgn",
       "note": ""
+    },
+    {
+      "id": "cr_ms09jxgszb9n",
+      "userId": "sp_sarita",
+      "code": "module_pass",
+      "label": "Module Passed — Enamor",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_sarita",
+      "byName": "Sarita",
+      "note": ""
     }
   ]
 }
