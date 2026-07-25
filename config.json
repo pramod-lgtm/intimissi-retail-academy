@@ -1585,6 +1585,19 @@
       "by": "sp_sarita",
       "byName": "Sarita",
       "note": ""
+    },
+    {
+      "id": "cr_ms0bd8a4bput",
+      "userId": "sp_sonali",
+      "code": "module_pass",
+      "label": "Module Passed — Nykaa Fashion",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_sonali",
+      "byName": "Sonali",
+      "note": ""
     }
   ]
 }
