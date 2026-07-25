@@ -1442,6 +1442,19 @@
       "by": "sp_reena",
       "byName": "Reena",
       "note": ""
+    },
+    {
+      "id": "cr_ms0ah2tfttyz",
+      "userId": "sp_rishabh",
+      "code": "module_pass",
+      "label": "Module Passed — Little Lacy",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_rishabh",
+      "byName": "Rishabh",
+      "note": ""
     }
   ]
 }
