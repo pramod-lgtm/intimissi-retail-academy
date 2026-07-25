@@ -1559,6 +1559,19 @@
       "by": "sp_annu_mgn",
       "byName": "Annu Mgn",
       "note": ""
+    },
+    {
+      "id": "cr_ms0b576uuq48",
+      "userId": "sp_sarita",
+      "code": "module_pass",
+      "label": "Module Passed — Types of Camisoles",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_sarita",
+      "byName": "Sarita",
+      "note": ""
     }
   ]
 }
