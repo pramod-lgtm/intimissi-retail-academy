@@ -1910,6 +1910,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_ms0dffa6hnfu",
+      "userId": "sp_nisha_kn",
+      "code": "module_pass",
+      "label": "Module Passed — Bra Fitting Expertise",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_nisha_kn",
+      "byName": "Nisha Kn",
+      "note": ""
     }
   ]
 }
