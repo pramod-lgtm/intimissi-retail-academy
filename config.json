@@ -1260,6 +1260,19 @@
       "by": "sp_annu_mgn",
       "byName": "Annu Mgn",
       "note": ""
+    },
+    {
+      "id": "cr_ms09x7l2dzn5",
+      "userId": "sp_rishabh",
+      "code": "module_pass",
+      "label": "Module Passed — Amante",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_rishabh",
+      "byName": "Rishabh",
+      "note": ""
     }
   ]
 }
