@@ -1000,6 +1000,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms090zhtsclv",
+      "userId": "sp_annu_mgn",
+      "code": "module_pass",
+      "label": "Module Passed — Amante",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_annu_mgn",
+      "byName": "Annu Mgn",
+      "note": ""
     }
   ]
 }
