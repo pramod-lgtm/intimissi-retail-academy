@@ -1468,6 +1468,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_ms0al0v98xk3",
+      "userId": "sp_annu_mgn",
+      "code": "module_pass",
+      "label": "Module Passed — WECOAL",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_annu_mgn",
+      "byName": "Annu Mgn",
+      "note": ""
     }
   ]
 }
