@@ -1832,6 +1832,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms0d2cauh3aa",
+      "userId": "sp_shaalu",
+      "code": "module_pass",
+      "label": "Module Passed — Upselling & Cross-Selling",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_shaalu",
+      "byName": "Shaalu",
+      "note": ""
     }
   ]
 }
