@@ -1182,6 +1182,19 @@
       "by": "sp_sarita",
       "byName": "Sarita",
       "note": ""
+    },
+    {
+      "id": "cr_ms09o7fia9lx",
+      "userId": "sp_rishabh",
+      "code": "module_pass",
+      "label": "Module Passed — Zewami",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_rishabh",
+      "byName": "Rishabh",
+      "note": ""
     }
   ]
 }
