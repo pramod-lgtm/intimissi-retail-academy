@@ -1845,6 +1845,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms0d6yk1rrp6",
+      "userId": "sp_rishabh",
+      "code": "module_pass",
+      "label": "Module Passed — IMP Accessories",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_rishabh",
+      "byName": "Rishabh",
+      "note": ""
     }
   ]
 }
