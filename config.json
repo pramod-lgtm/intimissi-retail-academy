@@ -1689,6 +1689,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms0ce1013x6p",
+      "userId": "sp_rishabh",
+      "code": "module_pass",
+      "label": "Module Passed — IMP",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_rishabh",
+      "byName": "Rishabh",
+      "note": ""
     }
   ]
 }
