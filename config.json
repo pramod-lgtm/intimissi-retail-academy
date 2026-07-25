@@ -1091,6 +1091,19 @@
       "by": "sp_shaalu",
       "byName": "Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms09gk73mrho",
+      "userId": "sp_sarita",
+      "code": "module_pass",
+      "label": "Module Passed — C9",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_sarita",
+      "byName": "Sarita",
+      "note": ""
     }
   ]
 }
