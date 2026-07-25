@@ -1884,6 +1884,19 @@
       "by": "sp_rishabh",
       "byName": "Rishabh",
       "note": ""
+    },
+    {
+      "id": "cr_ms0dd5f9wp21",
+      "userId": "sp_shaalu",
+      "code": "module_pass",
+      "label": "Module Passed — Bra Fitting Expertise",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_shaalu",
+      "byName": "Shaalu",
+      "note": ""
     }
   ]
 }
