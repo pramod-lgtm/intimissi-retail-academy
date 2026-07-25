@@ -1065,6 +1065,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_ms09cocuqzdm",
+      "userId": "sp_reena",
+      "code": "module_pass",
+      "label": "Module Passed — Types of Camisoles",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_reena",
+      "byName": "Reena",
+      "note": ""
     }
   ]
 }
