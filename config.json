@@ -1299,6 +1299,19 @@
       "by": "sp_nisha_kn",
       "byName": "Nisha Kn",
       "note": ""
+    },
+    {
+      "id": "cr_ms0a3ezwy2pp",
+      "userId": "sp_annu_mgn",
+      "code": "module_pass",
+      "label": "Module Passed — Little Lacy",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_annu_mgn",
+      "byName": "Annu Mgn",
+      "note": ""
     }
   ]
 }
