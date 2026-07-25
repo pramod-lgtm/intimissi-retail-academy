@@ -1130,6 +1130,19 @@
       "by": "sp_sarita",
       "byName": "Sarita",
       "note": ""
+    },
+    {
+      "id": "cr_ms09l0yn8h32",
+      "userId": "sp_reena",
+      "code": "module_pass",
+      "label": "Module Passed — IMP Accessories",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-25",
+      "month": "2026-07",
+      "by": "sp_reena",
+      "byName": "Reena",
+      "note": ""
     }
   ]
 }
