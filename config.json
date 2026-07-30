@@ -2081,5 +2081,17 @@
       "byName": "Shilat",
       "note": ""
     }
+  ],
+  "rpims_redemptions": [
+    {
+      "id": "rd_ms7j6b5kux8",
+      "userId": "sp_shilat",
+      "userName": "Shilat",
+      "code": "lunch",
+      "reward": "Lunch Coupon",
+      "cost": 500,
+      "status": "pending",
+      "date": "2026-07-30"
+    }
   ]
 }
