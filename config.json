@@ -2054,6 +2054,19 @@
       "by": "sp_shilat",
       "byName": "Shilat",
       "note": ""
+    },
+    {
+      "id": "cr_ms7it4kihfn8",
+      "userId": "sp_shilat",
+      "code": "module_pass",
+      "label": "Module Passed — Upselling & Cross-Selling",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-30",
+      "month": "2026-07",
+      "by": "sp_shilat",
+      "byName": "Shilat",
+      "note": ""
     }
   ]
 }
