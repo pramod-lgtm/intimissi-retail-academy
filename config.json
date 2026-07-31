@@ -2771,6 +2771,19 @@
       "by": "sp_preeti_roh",
       "byName": "Preeti Roh",
       "note": ""
+    },
+    {
+      "id": "cr_ms9121nfpz0x",
+      "userId": "sp_chandni",
+      "code": "module_pass",
+      "label": "Module Passed — Jockey",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_chandni",
+      "byName": "Chandni",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
