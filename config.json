@@ -3096,6 +3096,19 @@
       "by": "sp_chandni",
       "byName": "Chandni",
       "note": ""
+    },
+    {
+      "id": "cr_ms95q5qmps1s",
+      "userId": "sp_chandni",
+      "code": "module_pass",
+      "label": "Module Passed — IMP Accessories",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_chandni",
+      "byName": "Chandni",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
