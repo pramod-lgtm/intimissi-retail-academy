@@ -3122,6 +3122,19 @@
       "by": "sp_priyanka",
       "byName": "Priyanka",
       "note": ""
+    },
+    {
+      "id": "cr_ms985eqlbths",
+      "userId": "sp_pinki",
+      "code": "module_pass",
+      "label": "Module Passed — Little Lacy",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_pinki",
+      "byName": "Pinki",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
