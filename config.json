@@ -3395,6 +3395,19 @@
       "by": "sp_reena",
       "byName": "Reena",
       "note": ""
+    },
+    {
+      "id": "cr_ms9brv9i0ji7",
+      "userId": "sp_priyanka",
+      "code": "module_pass",
+      "label": "Module Passed — IMP",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_priyanka",
+      "byName": "Priyanka",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
