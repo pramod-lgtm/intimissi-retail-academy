@@ -2316,6 +2316,19 @@
       "by": "sp_annu_mgn",
       "byName": "Annu Mgn",
       "note": ""
+    },
+    {
+      "id": "cr_ms8vsnc6q4vo",
+      "userId": "sp_ritika",
+      "code": "module_pass",
+      "label": "Module Passed — Enamor",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_ritika",
+      "byName": "Ritika",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
