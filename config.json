@@ -3148,6 +3148,19 @@
       "by": "sp_pinki",
       "byName": "Pinki",
       "note": ""
+    },
+    {
+      "id": "cr_ms98it8g5kko",
+      "userId": "sp_pinki",
+      "code": "module_pass",
+      "label": "Module Passed — Triumph",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_pinki",
+      "byName": "Pinki",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
