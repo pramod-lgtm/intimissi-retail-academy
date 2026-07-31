@@ -2719,6 +2719,19 @@
       "by": "sp_preeti_roh",
       "byName": "Preeti Roh",
       "note": ""
+    },
+    {
+      "id": "cr_ms90hpuelbri",
+      "userId": "sp_chandni",
+      "code": "module_pass",
+      "label": "Module Passed — Little Lacy",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_chandni",
+      "byName": "Chandni",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
