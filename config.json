@@ -2433,6 +2433,19 @@
       "by": "sp_sneha_shaalu",
       "byName": "Sneha-Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_ms8whiq6p8s2",
+      "userId": "sp_sonali",
+      "code": "module_pass",
+      "label": "Module Passed — Bra Fitting Expertise",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_sonali",
+      "byName": "Sonali",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
