@@ -2797,6 +2797,19 @@
       "by": "sp_preeti_roh",
       "byName": "Preeti Roh",
       "note": ""
+    },
+    {
+      "id": "cr_ms91837mkyoe",
+      "userId": "sp_pinki",
+      "code": "module_pass",
+      "label": "Module Passed — C9",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-07-31",
+      "month": "2026-07",
+      "by": "sp_pinki",
+      "byName": "Pinki",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
