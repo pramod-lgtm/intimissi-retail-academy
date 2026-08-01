@@ -59,7 +59,39 @@ function mergePatch(cfg, patch) {
     }
   });
   if (Array.isArray(patch.rpims_audit)) cfg.rpims_audit = patch.rpims_audit;
+  // Learning progress: {userId: {moduleId: {...}}} — merged best-of per module so
+  // a device with stale data can never roll back someone's completed training.
+  if (patch.progress) {
+    if (!cfg.progress) cfg.progress = {};
+    Object.keys(patch.progress).forEach(function(uid) {
+      if (!cfg.progress[uid]) cfg.progress[uid] = {};
+      var incoming = patch.progress[uid] || {};
+      Object.keys(incoming).forEach(function(mid) {
+        cfg.progress[uid][mid] = mergeModuleProgress(cfg.progress[uid][mid], incoming[mid]);
+      });
+    });
+  }
+  // XP only ever increases — max-merge is safe and idempotent
+  if (patch.user_xp) {
+    if (!cfg.user_xp) cfg.user_xp = {};
+    Object.keys(patch.user_xp).forEach(function(uid) {
+      var v = patch.user_xp[uid] || 0;
+      if (!(cfg.user_xp[uid] > v)) cfg.user_xp[uid] = v;
+    });
+  }
   return cfg;
+}
+
+// Best-of merge for one module's progress record.
+function mergeModuleProgress(a, b) {
+  a = a || {}; b = b || {};
+  return {
+    watchPct:   Math.max(a.watchPct || 0, b.watchPct || 0),
+    quizPassed: !!(a.quizPassed || b.quizPassed),
+    quizScore:  Math.max(a.quizScore || 0, b.quizScore || 0),
+    attempts:   Math.max(a.attempts || 0, b.attempts || 0),
+    quizDate:   (a.quizDate && b.quizDate) ? (a.quizDate > b.quizDate ? a.quizDate : b.quizDate) : (a.quizDate || b.quizDate || null)
+  };
 }
 
 module.exports = async function handler(req, res) {

@@ -140,6 +140,20 @@ const APP = {
           cfg.rpims_redemptions.forEach(function(t) { if (t && t.id && !rseen[t.id]) { lr.push(t); rseen[t.id] = true; } });
           APP.storage.set('rpims_redemptions', lr);
         }
+        // Learning progress from every device — best-of merge, so a device with
+        // stale data can never roll back someone's completed training.
+        if (cfg.progress) {
+          var lp = APP.storage.get('progress', {});
+          Object.keys(cfg.progress).forEach(function(uid) {
+            if (!lp[uid]) lp[uid] = {};
+            Object.keys(cfg.progress[uid]).forEach(function(mid) {
+              lp[uid][mid] = APP.mergeModuleProgress(lp[uid][mid], cfg.progress[uid][mid]);
+            });
+          });
+          APP.storage.set('progress', lp);
+        }
+        // XP applied after syncSalesPersonUsers() rebuilds the user list
+        if (cfg.user_xp) APP._cloudXP = cfg.user_xp;
       })
       .catch(function() {})
       .finally(function() {
@@ -148,9 +162,59 @@ const APP = {
         APP.applyMonthlyTargets();
         APP.applyExecPerf();
         APP.syncSalesPersonUsers();
+        APP.applyCloudXP();
         APP.markRosterStatus();
         if (callback) callback();
       }); // always proceed even if offline
+  },
+
+  // ── LEARNING DATA SYNC (progress + XP across devices) ────
+  // Best-of merge for one module's progress record — never regresses.
+  mergeModuleProgress(a, b) {
+    a = a || {}; b = b || {};
+    return {
+      watchPct:   Math.max(a.watchPct || 0, b.watchPct || 0),
+      quizPassed: !!(a.quizPassed || b.quizPassed),
+      quizScore:  Math.max(a.quizScore || 0, b.quizScore || 0),
+      attempts:   Math.max(a.attempts || 0, b.attempts || 0),
+      quizDate:   (a.quizDate && b.quizDate) ? (a.quizDate > b.quizDate ? a.quizDate : b.quizDate) : (a.quizDate || b.quizDate || null)
+    };
+  },
+
+  // XP only ever increases, so take the higher of local vs cloud
+  applyCloudXP() {
+    if (!this._cloudXP) return;
+    const users = this.storage.get('users', []);
+    let changed = false;
+    users.forEach(u => {
+      const cloud = this._cloudXP[u.id];
+      if (typeof cloud === 'number' && cloud > (u.xp || 0)) { u.xp = cloud; changed = true; }
+    });
+    if (changed) this.storage.set('users', users);
+    this._cloudXP = null;
+  },
+
+  // Debounced push — a quiz pass fires several XP awards; batch into one commit
+  queueLearningSync() {
+    clearTimeout(this._learnSyncTimer);
+    this._learnSyncTimer = setTimeout(() => this.pushLearningData(), 2500);
+  },
+
+  pushLearningData() {
+    const xp = {};
+    this.storage.get('users', []).forEach(u => { if (u.xp) xp[u.id] = u.xp; });
+    this.syncConfig({ progress: this.storage.get('progress', {}), user_xp: xp });
+    this.storage.set('learning_synced_at', new Date().toISOString());
+  },
+
+  // Manual pull — for a manager who wants the team's latest right now
+  refreshLearningData(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing…'; }
+    this.loadConfig(() => {
+      this.storage.set('learning_synced_at', new Date().toISOString());
+      this.toast('Training data refreshed from all devices', 'success');
+      this.navigate('manager-dashboard');
+    });
   },
 
   // Switch JC_DATA to the uploaded target sheet for the current calendar
@@ -996,6 +1060,9 @@ const APP = {
       if (pct >= 90 && current < 90) {
         this.addXP(uid, 50, 'Video Completed');
         this.toast('🎉 Video completed! Quiz unlocked. +50 XP', 'success');
+      } else {
+        // Debounce means this fires once the video is paused/stopped, not per tick
+        this.queueLearningSync();
       }
     }
   },
@@ -3528,7 +3595,14 @@ const APP = {
     const improving     = teamData.filter(x => x.sp && x.sp.salesPctile >= 40 && x.sp.salesPctile < 75);
     const promotionReady= teamData.filter(x => x.trainPct >= 70 && x.sp && x.sp.salesPctile >= 70 && (x.xp||0) >= 2000);
 
+    const syncedAt = this.storage.get('learning_synced_at');
     el.innerHTML = `<div class="fade-in">
+
+      <!-- LEARNING SYNC STATUS -->
+      <div class="sync-bar">
+        <span class="text-sm">📚 Training data ${syncedAt ? `last synced ${new Date(syncedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}` : 'syncs automatically from every device'}</span>
+        <button class="btn btn-outline btn-sm" onclick="APP.refreshLearningData(this)">🔄 Refresh Now</button>
+      </div>
 
       <!-- MANAGER AI BRIEFING -->
       <div class="card card-gold mb-2">
@@ -4071,6 +4145,7 @@ const APP = {
         this.state.user = u;
         this.updateSidebarXP(u);
       }
+      this.queueLearningSync(); // push XP + progress to cloud so admins see it
     }
   },
 
