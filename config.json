@@ -4032,6 +4032,19 @@
       "by": "sp_pinki",
       "byName": "Pinki",
       "note": ""
+    },
+    {
+      "id": "cr_msa9riuiscyx",
+      "userId": "sp_ritika",
+      "code": "module_pass",
+      "label": "Module Passed — Greeting & Need Analysis",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-08-01",
+      "month": "2026-07",
+      "by": "sp_ritika",
+      "byName": "Ritika",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
