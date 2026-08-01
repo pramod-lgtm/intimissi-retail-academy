@@ -4172,7 +4172,7 @@
         "quizDate": "2026-08-01T11:04:17.307Z"
       },
       "fashion-bras": {
-        "watchPct": 14,
+        "watchPct": 100,
         "quizPassed": false,
         "quizScore": 0,
         "attempts": 0,
@@ -4187,6 +4187,6 @@
     "am1": 3800,
     "sm1": 2900,
     "sp_khushi": 2325,
-    "sp_pinki": 4360
+    "sp_pinki": 4410
   }
 }
