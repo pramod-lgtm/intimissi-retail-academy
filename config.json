@@ -4559,10 +4559,10 @@
       },
       "jockey": {
         "watchPct": 93,
-        "quizPassed": false,
-        "quizScore": 0,
-        "attempts": 0,
-        "quizDate": null
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:48:06.176Z"
       }
     }
   },
@@ -4576,6 +4576,6 @@
     "sp_pinki": 5860,
     "sp_sneha_shaalu": 5720,
     "sp_sadhna": 10,
-    "sp_ritika": 2660
+    "sp_ritika": 2910
   }
 }
