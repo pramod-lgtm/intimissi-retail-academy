@@ -4231,6 +4231,141 @@
         "attempts": 0,
         "quizDate": null
       }
+    },
+    "sp_sneha_shaalu": {
+      "types-of-bras": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 90,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:08:16.339Z"
+      },
+      "fashion-bras": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 80,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:19:20.901Z"
+      },
+      "types-of-panties": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:18:02.333Z"
+      },
+      "swimwear": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 80,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:16:01.200Z"
+      },
+      "camisoles": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:14:40.337Z"
+      },
+      "accessories": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 83,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:12:57.855Z"
+      },
+      "zewami": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 86,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:23:25.678Z"
+      },
+      "wecoal": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:00:56.131Z"
+      },
+      "jockey": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:26:54.965Z"
+      },
+      "triumph": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:00:32.962Z"
+      },
+      "imp": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T06:51:05.157Z"
+      },
+      "littlelacy": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:03:49.278Z"
+      },
+      "nkya": {
+        "watchPct": 90,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:13:00.748Z"
+      },
+      "enamor": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 86,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:32:50.253Z"
+      },
+      "c9": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:37:24.246Z"
+      },
+      "amante": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:43:30.600Z"
+      },
+      "greet-need": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:57:05.953Z"
+      },
+      "upsell-crosssell": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:57:15.722Z"
+      },
+      "bra-fitting": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 83,
+        "attempts": 1,
+        "quizDate": "2026-08-01T07:57:37.746Z"
+      }
     }
   },
   "user_xp": {
@@ -4241,7 +4376,7 @@
     "sm1": 2900,
     "sp_khushi": 2325,
     "sp_pinki": 5010,
-    "sp_sneha_shaalu": 30,
+    "sp_sneha_shaalu": 5655,
     "sp_sadhna": 10
   }
 }
