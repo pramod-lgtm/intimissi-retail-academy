@@ -4239,10 +4239,10 @@
       },
       "swimwear": {
         "watchPct": 100,
-        "quizPassed": false,
-        "quizScore": 0,
-        "attempts": 0,
-        "quizDate": null
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:10:17.842Z"
       }
     },
     "sp_sneha_shaalu": {
@@ -4388,7 +4388,7 @@
     "am1": 3800,
     "sm1": 2900,
     "sp_khushi": 2325,
-    "sp_pinki": 5010,
+    "sp_pinki": 5260,
     "sp_sneha_shaalu": 5655,
     "sp_sadhna": 10
   }
