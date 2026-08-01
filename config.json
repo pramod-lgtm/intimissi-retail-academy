@@ -3590,6 +3590,19 @@
       "by": "sp_sneha_shaalu",
       "byName": "Sneha-Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_msa0kd28b8hh",
+      "userId": "sp_sadhna",
+      "code": "module_pass",
+      "label": "Module Passed — Jockey",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-08-01",
+      "month": "2026-07",
+      "by": "sp_sadhna",
+      "byName": "Sadhna",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
