@@ -4190,6 +4190,13 @@
         "quizScore": 100,
         "attempts": 1,
         "quizDate": "2026-08-01T11:05:00.522Z"
+      },
+      "types-of-panties": {
+        "watchPct": 2,
+        "quizPassed": false,
+        "quizScore": 0,
+        "attempts": 0,
+        "quizDate": null
       }
     }
   },
