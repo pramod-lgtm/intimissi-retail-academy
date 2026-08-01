@@ -4404,10 +4404,10 @@
       },
       "camisoles": {
         "watchPct": 94,
-        "quizPassed": false,
-        "quizScore": 0,
-        "attempts": 0,
-        "quizDate": null
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T13:44:31.065Z"
       }
     },
     "sp_pinki": {
@@ -4766,7 +4766,7 @@
     "ops1": 5100,
     "am1": 3800,
     "sm1": 2900,
-    "sp_khushi": 5325,
+    "sp_khushi": 5575,
     "sp_pinki": 5860,
     "sp_sneha_shaalu": 5720,
     "sp_sadhna": 10,
