@@ -4446,6 +4446,71 @@
         "attempts": 1,
         "quizDate": "2026-08-01T07:57:37.746Z"
       }
+    },
+    "sp_ritika": {
+      "amante": {
+        "watchPct": 95,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:34:36.351Z"
+      },
+      "c9": {
+        "watchPct": 90,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:41:38.763Z"
+      },
+      "enamor": {
+        "watchPct": 91,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 2,
+        "quizDate": "2026-07-31T11:50:49.635Z"
+      },
+      "types-of-bras": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 90,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:57:25.826Z"
+      },
+      "fashion-bras": {
+        "watchPct": 93,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T12:01:05.133Z"
+      },
+      "greet-need": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:09:37.957Z"
+      },
+      "upsell-crosssell": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:12:39.922Z"
+      },
+      "bra-fitting": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:13:41.238Z"
+      },
+      "imp": {
+        "watchPct": 1,
+        "quizPassed": false,
+        "quizScore": 0,
+        "attempts": 0,
+        "quizDate": null
+      }
     }
   },
   "user_xp": {
@@ -4457,6 +4522,7 @@
     "sp_khushi": 2575,
     "sp_pinki": 5860,
     "sp_sneha_shaalu": 5720,
-    "sp_sadhna": 10
+    "sp_sadhna": 10,
+    "sp_ritika": 2310
   }
 }
