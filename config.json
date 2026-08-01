@@ -4123,6 +4123,19 @@
       "by": "sp_khushi",
       "byName": "Khushi",
       "note": ""
+    },
+    {
+      "id": "cr_msab4zvrwq0q",
+      "userId": "sp_ritika",
+      "code": "module_pass",
+      "label": "Module Passed — Jockey",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-08-01",
+      "month": "2026-07",
+      "by": "sp_ritika",
+      "byName": "Ritika",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
