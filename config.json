@@ -3980,5 +3980,59 @@
       "status": "pending",
       "date": "2026-07-30"
     }
-  ]
+  ],
+  "progress": {
+    "sp_khushi": {
+      "amante": {
+        "watchPct": 91,
+        "quizPassed": true,
+        "quizScore": 80,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:16:08.658Z"
+      },
+      "c9": {
+        "watchPct": 90,
+        "quizPassed": true,
+        "quizScore": 88,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:23:46.429Z"
+      },
+      "enamor": {
+        "watchPct": 99,
+        "quizPassed": true,
+        "quizScore": 86,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:39:07.253Z"
+      },
+      "types-of-bras": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:44:28.596Z"
+      },
+      "fashion-bras": {
+        "watchPct": 97,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-07-31T11:58:21.082Z"
+      },
+      "greet-need": {
+        "watchPct": 100,
+        "quizPassed": false,
+        "quizScore": 67,
+        "attempts": 1,
+        "quizDate": "2026-08-01T10:59:37.494Z"
+      }
+    }
+  },
+  "user_xp": {
+    "admin1": 9999,
+    "hr1": 4200,
+    "ops1": 5100,
+    "am1": 3800,
+    "sm1": 2900,
+    "sp_khushi": 1825
+  }
 }
