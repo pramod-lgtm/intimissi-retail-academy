@@ -3525,6 +3525,19 @@
       "by": "sp_priyanka",
       "byName": "Priyanka",
       "note": ""
+    },
+    {
+      "id": "cr_ms9zhlxceoxd",
+      "userId": "sp_sadhna",
+      "code": "module_pass",
+      "label": "Module Passed — Amante",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-08-01",
+      "month": "2026-07",
+      "by": "sp_sadhna",
+      "byName": "Sadhna",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
