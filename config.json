@@ -4201,12 +4201,13 @@
     }
   },
   "user_xp": {
-    "admin1": 9999,
+    "admin1": 10029,
     "hr1": 4200,
     "ops1": 5100,
     "am1": 3800,
     "sm1": 2900,
     "sp_khushi": 2325,
-    "sp_pinki": 4710
+    "sp_pinki": 4710,
+    "sp_sneha_shaalu": 20
   }
 }
