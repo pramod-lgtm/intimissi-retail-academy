@@ -4148,6 +4148,13 @@
         "quizScore": 100,
         "attempts": 1,
         "quizDate": "2026-08-01T11:00:59.069Z"
+      },
+      "bra-fitting": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 1,
+        "quizDate": "2026-08-01T11:13:25.433Z"
       }
     },
     "sp_pinki": {
@@ -4420,7 +4427,7 @@
     "ops1": 5100,
     "am1": 3800,
     "sm1": 2900,
-    "sp_khushi": 2325,
+    "sp_khushi": 2575,
     "sp_pinki": 5560,
     "sp_sneha_shaalu": 5720,
     "sp_sadhna": 10
