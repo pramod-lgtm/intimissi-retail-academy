@@ -4168,6 +4168,13 @@
         "quizScore": 100,
         "attempts": 1,
         "quizDate": "2026-08-01T11:13:25.433Z"
+      },
+      "imp": {
+        "watchPct": 1,
+        "quizPassed": false,
+        "quizScore": 0,
+        "attempts": 0,
+        "quizDate": null
       }
     },
     "sp_pinki": {
