@@ -4388,6 +4388,13 @@
         "quizScore": 100,
         "attempts": 1,
         "quizDate": "2026-08-01T13:40:20.276Z"
+      },
+      "camisoles": {
+        "watchPct": 38,
+        "quizPassed": false,
+        "quizScore": 0,
+        "attempts": 0,
+        "quizDate": null
       }
     },
     "sp_pinki": {
