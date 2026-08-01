@@ -3902,6 +3902,19 @@
       "by": "sp_sneha_shaalu",
       "byName": "Sneha-Shaalu",
       "note": ""
+    },
+    {
+      "id": "cr_msa2w4ss5y4c",
+      "userId": "sp_sneha_shaalu",
+      "code": "module_pass",
+      "label": "Module Passed — Upselling & Cross-Selling",
+      "amt": 40,
+      "pillar": "learning",
+      "date": "2026-08-01",
+      "month": "2026-07",
+      "by": "sp_sneha_shaalu",
+      "byName": "Sneha-Shaalu",
+      "note": ""
     }
   ],
   "rpims_redemptions": [
