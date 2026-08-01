@@ -4505,7 +4505,7 @@
         "quizDate": "2026-08-01T11:13:41.238Z"
       },
       "imp": {
-        "watchPct": 89,
+        "watchPct": 90,
         "quizPassed": false,
         "quizScore": 0,
         "attempts": 0,
@@ -4523,6 +4523,6 @@
     "sp_pinki": 5860,
     "sp_sneha_shaalu": 5720,
     "sp_sadhna": 10,
-    "sp_ritika": 2310
+    "sp_ritika": 2360
   }
 }
