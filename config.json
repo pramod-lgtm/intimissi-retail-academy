@@ -3967,5 +3967,19 @@
       "status": "pending",
       "date": "2026-07-30"
     }
-  ]
+  ],
+  "progress": {
+    "_synctest": {
+      "mod1": {
+        "watchPct": 100,
+        "quizPassed": true,
+        "quizScore": 88,
+        "attempts": 1,
+        "quizDate": "2026-08-01T10:00:00Z"
+      }
+    }
+  },
+  "user_xp": {
+    "_synctest": 250
+  }
 }
