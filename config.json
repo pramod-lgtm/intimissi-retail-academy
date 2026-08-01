@@ -4285,7 +4285,7 @@
         "quizDate": "2026-08-01T11:13:06.384Z"
       },
       "accessories": {
-        "watchPct": 4,
+        "watchPct": 100,
         "quizPassed": false,
         "quizScore": 0,
         "attempts": 0,
@@ -4435,7 +4435,7 @@
     "am1": 3800,
     "sm1": 2900,
     "sp_khushi": 2575,
-    "sp_pinki": 5560,
+    "sp_pinki": 5610,
     "sp_sneha_shaalu": 5720,
     "sp_sadhna": 10
   }
