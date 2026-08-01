@@ -4033,10 +4033,10 @@
       },
       "greet-need": {
         "watchPct": 100,
-        "quizPassed": false,
-        "quizScore": 67,
-        "attempts": 1,
-        "quizDate": "2026-08-01T10:59:37.494Z"
+        "quizPassed": true,
+        "quizScore": 100,
+        "attempts": 2,
+        "quizDate": "2026-08-01T10:59:55.207Z"
       }
     }
   },
@@ -4046,6 +4046,6 @@
     "ops1": 5100,
     "am1": 3800,
     "sm1": 2900,
-    "sp_khushi": 1825
+    "sp_khushi": 2075
   }
 }
